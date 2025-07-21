@@ -1,9 +1,10 @@
 export interface Message {
   id: string;
-  type: "user" | "assistant";
+  type: "user" | "assistant" | "suggestion";
   content: string;
   timestamp: Date;
   isAudio?: boolean;
+  suggestedReply?: string;
 }
 
 export interface VoiceSettings {

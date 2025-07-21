@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Header from "./components/Header";
 import StatusBar from "./components/StatusBar";
 import SettingsPanel from "./components/SettingsPanel";
@@ -17,8 +17,10 @@ const VoiceAIAssistant: React.FC = () => {
   const [transcribedText, setTranscribedText] = useState("");
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
+  const [sampleMode, setSampleMode] = useState(false);
+  const [replySuggestions, setReplySuggestions] = useState<string[]>([]);
 
-  const [connectionStatus, setConnectionStatus] = useState<
+  const [connectionStatus] = useState<
     "connected" | "disconnected" | "connecting"
   >("connected");
   const [showSettings, setShowSettings] = useState(false);
@@ -50,7 +52,7 @@ const VoiceAIAssistant: React.FC = () => {
     },
     {
       name: "Order Food",
-      prompt: `You are a customer practicing how to order food in a restaurant. The AI should act as a restaurant server, respond politely, take orders, and ask follow-up questions like drink preferences, side dishes, or payment method.`,
+      prompt: `You are a customer practicing how to order food in a restaurant...`,
       initialMessage: "Hi, I’d like to order something to eat.",
     },
     {
@@ -67,9 +69,12 @@ const VoiceAIAssistant: React.FC = () => {
   ];
 
   useEffect(() => {
+    let sendTimeout: NodeJS.Timeout | null = null;
+
     if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
       const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+        window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
@@ -90,8 +95,15 @@ const VoiceAIAssistant: React.FC = () => {
 
         setTranscribedText(finalTranscript + interimTranscript);
 
-        if (finalTranscript) {
-          handleSendMessage(finalTranscript);
+        if (finalTranscript.trim()) {
+          // Nếu đang chờ gửi cũ, huỷ bỏ
+          if (sendTimeout) clearTimeout(sendTimeout);
+
+          // Đợi 3 giây, nếu không có transcript mới thì gửi
+          sendTimeout = setTimeout(() => {
+            handleSendMessage(finalTranscript.trim());
+            setTranscribedText("");
+          }, 3000);
         }
       };
 
@@ -112,72 +124,11 @@ const VoiceAIAssistant: React.FC = () => {
     }
 
     return () => {
+      if (sendTimeout) clearTimeout(sendTimeout);
       recognitionRef.current?.stop();
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, [voiceSettings.language]);
-
-  // const handleSendMessage = async (text: string) => {
-  //   if (!text.trim()) return;
-
-  //   setIsProcessing(true);
-  //   setError(null);
-
-  //   const userMessage = createUserMessage(text);
-
-  //   const currentMessages = [...messages, userMessage];
-  //   setMessages(currentMessages);
-
-  //   try {
-  //     const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=${AZURE_API_VERSION}`;
-
-  //     const messageHistory = currentMessages.map((msg) => ({
-  //       role: msg.type === "user" ? "user" : "assistant",
-  //       content: msg.content,
-  //     }));
-
-  //     const payload: any = {
-  //       messages: [],
-  //       max_completion_tokens: 500,
-  //     };
-
-  //     if (systemPrompt) {
-  //       payload.messages.push({ role: "system", content: systemPrompt });
-  //     }
-  //     console.log("🧠 Using system prompt:", systemPrompt);
-  //     payload.messages.push(...messageHistory);
-
-  //     console.log("📤 Payload to Azure:", payload.messages);
-
-  //     const response = await fetch(url, {
-  //       method: "POST",
-  //       headers: {
-  //         "api-key": AZURE_API_KEY,
-  //         "Content-Type": "application/json",
-  //       },
-  //       body: JSON.stringify(payload),
-  //     });
-
-  //     if (!response.ok) {
-  //       const errorText = await response.text();
-  //       console.error("Azure Error", response.status, errorText);
-  //       throw new Error("Failed to get response from Azure");
-  //     }
-
-  //     const data = await response.json();
-  //     const aiText = data.choices[0].message.content;
-
-  //     const assistantMessage = createAssistantMessage(aiText);
-  //     setMessages((prev) => [...prev, assistantMessage]);
-
-  //     await handleTextToSpeech(aiText);
-  //   } catch (error) {
-  //     console.error("🛑 Send Message Error:", error);
-  //     setError("Failed to process message: " + (error as Error).message);
-  //   } finally {
-  //     setIsProcessing(false);
-  //   }
-  // };
 
   const handleSendMessage = async (text: string, customPrompt?: string) => {
     if (!text.trim()) return;
@@ -250,6 +201,114 @@ const VoiceAIAssistant: React.FC = () => {
       setIsProcessing(false);
     }
   };
+
+  // const handleSendMessage = async (text: string, customPrompt?: string) => {
+  //   if (!text.trim()) return;
+
+  //   setIsProcessing(true);
+  //   setError(null);
+
+  //   const userMessage = createUserMessage(text);
+  //   const currentMessages = [...messages, userMessage];
+  //   setMessages(currentMessages);
+
+  //   try {
+  //     const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=${AZURE_API_VERSION}`;
+
+  //     const promptToUse = customPrompt ?? systemPrompt;
+
+  //     const messageHistory = currentMessages.map((msg) => ({
+  //       role: msg.type === "user" ? "user" : "assistant",
+  //       content: msg.content,
+  //     }));
+
+  //     const payload: any = {
+  //       messages: [],
+  //       max_completion_tokens: 800,
+  //     };
+
+  //     if (promptToUse) {
+  //       payload.messages.push({ role: "system", content: promptToUse });
+  //     }
+
+  //     payload.messages.push(...messageHistory);
+
+  //     console.log("🧠 Using system prompt:", promptToUse);
+  //     console.log("📤 Payload to Azure:", payload.messages);
+
+  //     const response = await fetch(url, {
+  //       method: "POST",
+  //       headers: {
+  //         "api-key": AZURE_API_KEY,
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify(payload),
+  //     });
+
+  //     if (!response.ok) {
+  //       const errorText = await response.text();
+  //       console.error("Azure Error", response.status, errorText);
+  //       throw new Error("Failed to get response from Azure");
+  //     }
+
+  //     const data = await response.json();
+  //     const aiText = data.choices?.[0]?.message?.content?.trim() || "";
+
+  //     if (!aiText) {
+  //       setError("Empty response from AI");
+  //       return;
+  //     }
+
+  //     const assistantMessage = createAssistantMessage(aiText);
+  //     const updatedMessages = [...currentMessages, assistantMessage];
+  //     setMessages(updatedMessages);
+
+  //     console.log("🤖 AI Response:", aiText);
+  //     await handleTextToSpeech(aiText);
+
+  //     // ✅ Gợi ý câu trả lời tiếp theo bằng cách gọi lại Azure để sinh JSON reply
+  //     const suggestionResponse = await fetch(url, {
+  //       method: "POST",
+  //       headers: {
+  //         "api-key": AZURE_API_KEY,
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         messages: [
+  //           {
+  //             role: "system",
+  //             content: `You're an English tutor. Based on the conversation so far, suggest 2 short and natural replies the student might say next. Respond with a JSON array of 1-2 sentences.`,
+  //           },
+  //           ...updatedMessages.map((msg) => ({
+  //             role: msg.type === "user" ? "user" : "assistant",
+  //             content: msg.content,
+  //           })),
+  //         ],
+  //         // temperature: 0.7,
+  //         max_completion_tokens: 800,
+  //       }),
+  //     });
+
+  //     const suggestionData = await suggestionResponse.json();
+  //     const rawSuggestions =
+  //       suggestionData.choices?.[0]?.message?.content || "";
+
+  //     try {
+  //       const parsedSuggestions = JSON.parse(rawSuggestions);
+  //       if (Array.isArray(parsedSuggestions)) {
+  //         setReplySuggestions(parsedSuggestions);
+  //         console.log("💡 Suggested replies:", parsedSuggestions);
+  //       }
+  //     } catch {
+  //       console.warn("⚠️ Could not parse suggestions:", rawSuggestions);
+  //     }
+  //   } catch (error) {
+  //     console.error("🛑 Send Message Error:", error);
+  //     setError("Failed to process message: " + (error as Error).message);
+  //   } finally {
+  //     setIsProcessing(false);
+  //   }
+  // };
 
   const handleTextToSpeech = async (text: string) => {
     try {
@@ -351,6 +410,17 @@ const VoiceAIAssistant: React.FC = () => {
   //   setSystemPrompt(prompt);
   // };
 
+  // const handleSelectTopic = (
+  //   topicName: string,
+  //   prompt: string,
+  //   initialMessage: string
+  // ) => {
+  //   clearConversation();
+  //   setSelectedTopic(topicName);
+  //   setSystemPrompt(prompt); // Giữ system prompt cho toàn bộ đoạn hội thoại
+  //   handleSendMessage(initialMessage, prompt); // Gửi câu mở đầu riêng cho topic
+  // };
+
   const handleSelectTopic = (
     topicName: string,
     prompt: string,
@@ -358,51 +428,321 @@ const VoiceAIAssistant: React.FC = () => {
   ) => {
     clearConversation();
     setSelectedTopic(topicName);
-    setSystemPrompt(prompt); // Giữ system prompt cho toàn bộ đoạn hội thoại
-    handleSendMessage(initialMessage, prompt); // Gửi câu mở đầu riêng cho topic
+    setSystemPrompt(prompt);
+    setSampleMode(false);
+    handleSendMessage(initialMessage, prompt);
   };
+
+  // const handleSuggestReplyAt = async (index: number) => {
+  //   try {
+  //     const contextMessages = messages.slice(0, index + 1);
+
+  //     const messageHistory = contextMessages.map((msg) => ({
+  //       role: msg.type === "user" ? "user" : "assistant",
+  //       content: msg.content,
+  //     }));
+
+  //     const payload = {
+  //       messages: [
+  //         ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
+  //         ...messageHistory,
+  //         {
+  //           role: "user",
+  //           content: "Suggest a possible response the user might say next.",
+  //         },
+  //       ],
+  //       max_completion_tokens: 800,
+  //     };
+
+  //     const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=${AZURE_API_VERSION}`;
+
+  //     const response = await fetch(url, {
+  //       method: "POST",
+  //       headers: {
+  //         "api-key": AZURE_API_KEY,
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify(payload),
+  //     });
+
+  //     if (!response.ok) {
+  //       const errorText = await response.text();
+  //       throw new Error("Azure Suggestion Error: " + errorText);
+  //     }
+
+  //     const data = await response.json();
+  //     console.log("Azure Response Data:", JSON.stringify(data, null, 2));
+
+  //     const suggestion = data.choices?.[0]?.message?.content?.trim();
+
+  //     if (suggestion) {
+  //       setTranscribedText(suggestion);
+  //       await handleTextToSpeech(suggestion);
+  //     } else {
+  //       setError("No suggestion received.");
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //     setError("Failed to fetch suggestion: " + (err as Error).message);
+  //   }
+  // };
+
+  const handleSuggestReplyAt = async (index: number) => {
+    try {
+      const contextMessages = messages.slice(0, index + 1);
+
+      const messageHistory = contextMessages.map((msg) => ({
+        role: msg.type === "user" ? "user" : "assistant",
+        content: msg.content,
+      }));
+
+      const payload = {
+        messages: [
+          ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
+          ...messageHistory,
+          {
+            role: "system",
+            content: "Suggest a possible response the user might say next.",
+          },
+        ],
+        max_completion_tokens: 800,
+      };
+
+      const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=${AZURE_API_VERSION}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "api-key": AZURE_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error("Azure Suggestion Error: " + errorText);
+      }
+
+      const data = await response.json();
+      console.log("Azure Response Data:", JSON.stringify(data, null, 2));
+      const suggestion = data.choices[0]?.message?.content?.trim();
+
+      if (suggestion) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            type: "suggestion",
+            content: suggestion,
+            timestamp: new Date(),
+          },
+        ]);
+      } else {
+        setError("No suggestion received.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to fetch suggestion: " + (err as Error).message);
+    }
+  };
+
+  // return (
+  //   <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
+  //     <div className="container mx-auto px-4 py-8 max-w-4xl">
+  //       {/* HEADER */}
+  //       <Header />
+
+  //       {/* STATUS BAR */}
+  //       <StatusBar
+  //         connectionStatus={connectionStatus}
+  //         isRecording={isRecording}
+  //         isProcessing={isProcessing}
+  //         toggleSettings={() => setShowSettings(!showSettings)}
+  //       />
+
+  //       {/* SETTINGS */}
+  //       {showSettings && (
+  //         <SettingsPanel
+  //           voiceSettings={voiceSettings}
+  //           setVoiceSettings={setVoiceSettings}
+  //         />
+  //       )}
+
+  //       {/* TOPIC SELECTOR */}
+  //       <div className="mb-6">
+  //         <h2 className="text-lg font-semibold mb-2">🎯 Select a topic:</h2>
+  //         <div className="flex flex-col gap-3">
+  //           {topics.map((topic) => (
+  //             <div
+  //               key={topic.name}
+  //               className="flex items-center justify-between bg-gray-800 rounded px-4 py-2"
+  //             >
+  //               <div className="flex items-center gap-3">
+  //                 <button
+  //                   onClick={() =>
+  //                     handleSelectTopic(
+  //                       topic.name,
+  //                       topic.prompt,
+  //                       topic.initialMessage
+  //                     )
+  //                   }
+  //                   className={`px-3 py-1 rounded font-medium ${
+  //                     selectedTopic === topic.name
+  //                       ? "bg-blue-600"
+  //                       : "bg-gray-600 hover:bg-gray-500"
+  //                   }`}
+  //                 >
+  //                   {topic.name}
+  //                 </button>
+
+  //                 {topic.sampleDialog && (
+  //                   <button
+  //                     onClick={() =>
+  //                       handlePracticeSample(
+  //                         topic.name,
+  //                         topic.prompt,
+  //                         topic.sampleDialog
+  //                       )
+  //                     }
+  //                     className="px-2 py-1 text-sm bg-yellow-600 hover:bg-yellow-500 rounded"
+  //                   >
+  //                     📖 Practice Sample
+  //                   </button>
+  //                 )}
+  //               </div>
+  //             </div>
+  //           ))}
+  //         </div>
+  //       </div>
+
+  //       {/* ERROR ALERT */}
+  //       {error && <ErrorAlert error={error} />}
+
+  //       {/* LIVE TRANSCRIPTION TEXT */}
+  //       {transcribedText && <TranscriptionBox text={transcribedText} />}
+
+  //       {/* MESSAGE LIST (with sampleMode) */}
+  //       <MessageList messages={messages} sampleMode={sampleMode} />
+
+  //       {/* CONTROL BUTTONS */}
+  //       <ControlButtons
+  //         isRecording={isRecording}
+  //         isProcessing={isProcessing}
+  //         toggleRecording={toggleRecording}
+  //         isPlaying={isPlaying}
+  //         stopAudio={stopAudio}
+  //         clearConversation={clearConversation}
+  //       />
+
+  //       {/* HIDDEN AUDIO ELEMENT */}
+  //       <audio ref={audioRef} style={{ display: "none" }} />
+  //     </div>
+  //   </div>
+  // );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
+        {/* HEADER */}
         <Header />
+
+        {/* STATUS BAR */}
         <StatusBar
           connectionStatus={connectionStatus}
           isRecording={isRecording}
           isProcessing={isProcessing}
           toggleSettings={() => setShowSettings(!showSettings)}
         />
+
+        {/* SETTINGS PANEL */}
         {showSettings && (
           <SettingsPanel
             voiceSettings={voiceSettings}
             setVoiceSettings={setVoiceSettings}
           />
         )}
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold mb-2">Select a topic:</h2>
-          <div className="flex flex-wrap gap-2">
+
+        {/* TOPIC SELECTOR */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-2">🎯 Select a topic:</h2>
+          <div className="flex flex-col gap-3">
             {topics.map((topic) => (
-              <button
+              <div
                 key={topic.name}
-                onClick={() =>
-                  handleSelectTopic(
-                    topic.name,
-                    topic.prompt,
-                    topic.initialMessage
-                  )
-                }
-                className={`px-3 py-1 rounded ${
-                  selectedTopic === topic.name ? "bg-blue-600" : "bg-gray-700"
-                }`}
+                className="flex items-center justify-between bg-gray-800 rounded px-4 py-2"
               >
-                {topic.name}
-              </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() =>
+                      handleSelectTopic(
+                        topic.name,
+                        topic.prompt,
+                        topic.initialMessage
+                      )
+                    }
+                    className={`px-3 py-1 rounded font-medium ${
+                      selectedTopic === topic.name
+                        ? "bg-blue-600"
+                        : "bg-gray-600 hover:bg-gray-500"
+                    }`}
+                  >
+                    {topic.name}
+                  </button>
+
+                  {/* {topic.sampleDialog && (
+                    <button
+                      onClick={() =>
+                        handlePracticeSample(
+                          topic.name,
+                          topic.prompt,
+                          topic.sampleDialog
+                        )
+                      }
+                      className="px-2 py-1 text-sm bg-yellow-600 hover:bg-yellow-500 rounded"
+                    >
+                      📖 Practice Sample
+                    </button>
+                  )} */}
+                </div>
+              </div>
             ))}
           </div>
         </div>
+
+        {/* ERROR ALERT */}
         {error && <ErrorAlert error={error} />}
+
+        {/* LIVE TRANSCRIPTION */}
         {transcribedText && <TranscriptionBox text={transcribedText} />}
-        <MessageList messages={messages} />
+
+        {/* MESSAGE LIST */}
+        <MessageList
+          messages={messages}
+          sampleMode={sampleMode}
+          onSuggestReply={handleSuggestReplyAt}
+        />
+
+        {/* SUGGESTED REPLIES */}
+        {replySuggestions.length > 0 && (
+          <div className="mb-6">
+            <p className="text-sm text-gray-300 mb-2">
+              🗣️ Try saying one of these:
+            </p>
+            <div className="space-y-2">
+              {replySuggestions.map((s, i) => (
+                <div
+                  key={i}
+                  className="bg-green-700 text-white px-4 py-2 rounded"
+                >
+                  {s}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* CONTROL BUTTONS */}
         <ControlButtons
           isRecording={isRecording}
           isProcessing={isProcessing}
@@ -411,6 +751,8 @@ const VoiceAIAssistant: React.FC = () => {
           stopAudio={stopAudio}
           clearConversation={clearConversation}
         />
+
+        {/* AUDIO PLAYER (INVISIBLE) */}
         <audio ref={audioRef} style={{ display: "none" }} />
       </div>
     </div>
