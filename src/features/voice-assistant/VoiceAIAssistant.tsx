@@ -8,7 +8,7 @@ import ControlButtons from "./components/ControlButtons";
 import ErrorAlert from "./components/ErrorAlert";
 import { createUserMessage, createAssistantMessage } from "./types/logic";
 import type { Message, VoiceSettings } from "./types/types";
-
+import FloatingFeedback from "./components/FloatingFeedback";
 const VoiceAIAssistant: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -837,6 +837,7 @@ const VoiceAIAssistant: React.FC = () => {
 
         {/* AUDIO PLAYER (INVISIBLE) */}
         <audio ref={audioRef} style={{ display: "none" }} />
+        <FloatingFeedback />
       </div>
     </div>
   );
