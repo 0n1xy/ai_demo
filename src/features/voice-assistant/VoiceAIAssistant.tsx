@@ -423,7 +423,10 @@ const VoiceAIAssistant: React.FC = () => {
           setIsPlaying(false);
           URL.revokeObjectURL(url);
         };
-        await audioRef.current.play();
+        audioRef.current.play().catch((err) => {
+          console.warn("🔇 Autoplay blocked by browser:", err);
+          setIsPlaying(false);
+        });
       }
     } catch (error) {
       console.error("🛑 Google TTS Error:", error);
@@ -432,15 +435,15 @@ const VoiceAIAssistant: React.FC = () => {
     }
   };
 
-  const enableAudio = async () => {
+  const requestAudioPermission = async () => {
     try {
       const dummy = new Audio();
       dummy.src =
         "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...";
-      dummy.play().catch(() => {});
+      await dummy.play(); // sẽ không phát âm thanh nhưng giúp lấy quyền
       setAudioEnabled(true);
     } catch (err) {
-      console.warn("Audio not allowed yet");
+      console.warn("User denied audio autoplay:", err);
     }
   };
 
@@ -774,12 +777,12 @@ const VoiceAIAssistant: React.FC = () => {
           </div>
         </div>
         {!audioEnabled && (
-          <div className="mb-4">
+          <div className="flex justify-center my-4">
             <button
-              onClick={enableAudio}
-              className="px-4 py-2 rounded bg-green-600 text-white shadow hover:bg-green-700"
+              onClick={requestAudioPermission}
+              className="bg-blue-500 text-white px-6 py-3 rounded shadow"
             >
-              🎧 Enable Voice Playback
+              🎧 Start App & Enable Audio
             </button>
           </div>
         )}
