@@ -19,6 +19,7 @@ const VoiceAIAssistant: React.FC = () => {
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
   const [sampleMode, setSampleMode] = useState(false);
   const [replySuggestions, setReplySuggestions] = useState<string[]>([]);
+  const [audioEnabled, setAudioEnabled] = useState(false);
 
   const [connectionStatus] = useState<
     "connected" | "disconnected" | "connecting"
@@ -311,10 +312,73 @@ const VoiceAIAssistant: React.FC = () => {
   //   }
   // };
 
+  // const handleTextToSpeech = async (text: string) => {
+  //   try {
+  //     setIsPlaying(true);
+
+  //     const response = await fetch(
+  //       `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_KEY}`,
+  //       {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({
+  //           input: { text },
+  //           voice: {
+  //             languageCode: voiceSettings.language,
+  //             name: voiceSettings.voice,
+  //           },
+  //           audioConfig: {
+  //             audioEncoding: "MP3",
+  //             speakingRate: voiceSettings.speed,
+  //             pitch: voiceSettings.pitch,
+  //           },
+  //         }),
+  //       }
+  //     );
+
+  //     if (!response.ok) throw new Error("Google TTS failed");
+
+  //     const data = await response.json();
+
+  //     // ✅ Log kết quả để debug nếu không có audioContent
+  //     console.log("🧾 Google TTS full response:", data);
+
+  //     if (!data.audioContent) {
+  //       throw new Error("Google TTS response missing audioContent");
+  //     }
+
+  //     const binary = atob(data.audioContent);
+  //     const buffer = new Uint8Array(binary.length);
+  //     for (let i = 0; i < binary.length; i++) {
+  //       buffer[i] = binary.charCodeAt(i);
+  //     }
+
+  //     const blob = new Blob([buffer], { type: "audio/mp3" });
+  //     const url = URL.createObjectURL(blob);
+
+  //     if (audioRef.current) {
+  //       audioRef.current.src = url;
+  //       audioRef.current.onended = () => {
+  //         setIsPlaying(false);
+  //         URL.revokeObjectURL(url);
+  //       };
+  //       await audioRef.current.play();
+  //     }
+  //   } catch (error) {
+  //     console.error("🛑 Google TTS Error:", error); // log lỗi rõ ràng
+  //     setError("Failed to convert text to speech: " + (error as Error).message);
+  //     setIsPlaying(false);
+  //   }
+  // };
+
   const handleTextToSpeech = async (text: string) => {
+    if (!audioEnabled) {
+      console.warn("🔇 Audio playback not enabled yet");
+      return;
+    }
+
     try {
       setIsPlaying(true);
-
       const response = await fetch(
         `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_KEY}`,
         {
@@ -338,8 +402,6 @@ const VoiceAIAssistant: React.FC = () => {
       if (!response.ok) throw new Error("Google TTS failed");
 
       const data = await response.json();
-
-      // ✅ Log kết quả để debug nếu không có audioContent
       console.log("🧾 Google TTS full response:", data);
 
       if (!data.audioContent) {
@@ -364,9 +426,21 @@ const VoiceAIAssistant: React.FC = () => {
         await audioRef.current.play();
       }
     } catch (error) {
-      console.error("🛑 Google TTS Error:", error); // log lỗi rõ ràng
+      console.error("🛑 Google TTS Error:", error);
       setError("Failed to convert text to speech: " + (error as Error).message);
       setIsPlaying(false);
+    }
+  };
+
+  const enableAudio = async () => {
+    try {
+      const dummy = new Audio();
+      dummy.src =
+        "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...";
+      dummy.play().catch(() => {});
+      setAudioEnabled(true);
+    } catch (err) {
+      console.warn("Audio not allowed yet");
     }
   };
 
@@ -432,13 +506,6 @@ const VoiceAIAssistant: React.FC = () => {
     setSystemPrompt(prompt);
     setSampleMode(false);
     handleSendMessage(initialMessage, prompt);
-  };
-
-  const handleEnableVoice = () => {
-    const utterance = new SpeechSynthesisUtterance("Voice enabled");
-    utterance.lang = "en-US";
-    utterance.volume = 1;
-    window.speechSynthesis.speak(utterance);
   };
 
   // const handleSuggestReplyAt = async (index: number) => {
@@ -706,7 +773,16 @@ const VoiceAIAssistant: React.FC = () => {
             </select>
           </div>
         </div>
-        <button onClick={handleEnableVoice}>🎧 Enable Voice</button>
+        {!audioEnabled && (
+          <div className="mb-4">
+            <button
+              onClick={enableAudio}
+              className="px-4 py-2 rounded bg-green-600 text-white shadow hover:bg-green-700"
+            >
+              🎧 Enable Voice Playback
+            </button>
+          </div>
+        )}
 
         {/* ERROR ALERT */}
         {error && <ErrorAlert error={error} />}
