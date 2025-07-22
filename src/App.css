@@ -1,0 +1,6 @@
+/* App.css hoặc index.css */
+html,
+body {
+  overscroll-behavior: none;
+  scroll-behavior: smooth;
+}
