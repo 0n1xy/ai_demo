@@ -432,6 +432,14 @@ const VoiceAIAssistant: React.FC = () => {
     setSystemPrompt(prompt);
     setSampleMode(false);
     handleSendMessage(initialMessage, prompt);
+
+    requestAudioPermission();
+  };
+
+  const requestAudioPermission = () => {
+    const utterance = new SpeechSynthesisUtterance("Hi");
+    utterance.volume = 0.01;
+    window.speechSynthesis.speak(utterance);
   };
 
   // const handleSuggestReplyAt = async (index: number) => {
@@ -788,7 +796,7 @@ const VoiceAIAssistant: React.FC = () => {
               }}
             >
               <option value="" disabled>
-                -- Chọn chủ đề --
+                Chọn chủ đề
               </option>
               {topics.map((topic) => (
                 <option key={topic.name} value={topic.name}>
