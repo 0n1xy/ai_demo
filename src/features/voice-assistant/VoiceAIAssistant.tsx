@@ -153,7 +153,7 @@ const VoiceAIAssistant: React.FC = () => {
 
       const payload: any = {
         messages: [],
-        max_completion_tokens: 800,
+        max_completion_tokens: 1500,
       };
 
       if (promptToUse) {
@@ -182,6 +182,7 @@ const VoiceAIAssistant: React.FC = () => {
       const data = await response.json();
       const aiText = data.choices[0]?.message?.content?.trim() || "";
 
+      console.log("Data:", data);
       console.log("🤖 AI Response:", aiText);
 
       if (!aiText) {
@@ -505,7 +506,7 @@ const VoiceAIAssistant: React.FC = () => {
             content: "Suggest a possible response the user might say next.",
           },
         ],
-        max_completion_tokens: 800,
+        max_completion_tokens: 1500,
       };
 
       const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=${AZURE_API_VERSION}`;
