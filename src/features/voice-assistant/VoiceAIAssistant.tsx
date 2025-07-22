@@ -432,13 +432,12 @@ const VoiceAIAssistant: React.FC = () => {
     setSystemPrompt(prompt);
     setSampleMode(false);
     handleSendMessage(initialMessage, prompt);
-
-    requestAudioPermission();
   };
 
-  const requestAudioPermission = () => {
-    const utterance = new SpeechSynthesisUtterance("Hi");
-    utterance.volume = 0.01;
+  const handleEnableVoice = () => {
+    const utterance = new SpeechSynthesisUtterance("Voice enabled");
+    utterance.lang = "en-US";
+    utterance.volume = 1;
     window.speechSynthesis.speak(utterance);
   };
 
@@ -651,105 +650,6 @@ const VoiceAIAssistant: React.FC = () => {
   // );
 
   return (
-    // <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
-    //   <div className="container mx-auto px-4 py-8 max-w-4xl">
-    //     {/* HEADER */}
-    //     <Header />
-
-    //     {/* STATUS BAR */}
-    //     <StatusBar
-    //       connectionStatus={connectionStatus}
-    //       isRecording={isRecording}
-    //       isProcessing={isProcessing}
-    //       toggleSettings={() => setShowSettings(!showSettings)}
-    //     />
-
-    //     {/* SETTINGS PANEL */}
-    //     {showSettings && (
-    //       <SettingsPanel
-    //         voiceSettings={voiceSettings}
-    //         setVoiceSettings={setVoiceSettings}
-    //       />
-    //     )}
-
-    //     {/* TOPIC SELECTOR */}
-    //     <div className="mb-6">
-    //       <h2 className="text-lg font-semibold mb-2">🎯 Select a topic:</h2>
-    //       <div className="flex flex-col gap-3">
-    //         {topics.map((topic) => (
-    //           <div
-    //             key={topic.name}
-    //             className="flex items-center justify-between bg-gray-800 rounded px-4 py-2"
-    //           >
-    //             <div className="flex items-center gap-3">
-    //               <button
-    //                 onClick={() =>
-    //                   handleSelectTopic(
-    //                     topic.name,
-    //                     topic.prompt,
-    //                     topic.initialMessage
-    //                   )
-    //                 }
-    //                 className={`px-3 py-1 rounded font-medium ${
-    //                   selectedTopic === topic.name
-    //                     ? "bg-blue-600"
-    //                     : "bg-gray-600 hover:bg-gray-500"
-    //                 }`}
-    //               >
-    //                 {topic.name}
-    //               </button>
-    //             </div>
-    //           </div>
-    //         ))}
-    //       </div>
-    //     </div>
-
-    //     {/* ERROR ALERT */}
-    //     {error && <ErrorAlert error={error} />}
-
-    //     {/* LIVE TRANSCRIPTION */}
-    //     {transcribedText && <TranscriptionBox text={transcribedText} />}
-
-    //     {/* MESSAGE LIST */}
-    //     <MessageList
-    //       messages={messages}
-    //       sampleMode={sampleMode}
-    //       onSuggestReply={handleSuggestReplyAt}
-    //     />
-
-    //     {/* SUGGESTED REPLIES */}
-    //     {replySuggestions.length > 0 && (
-    //       <div className="mb-6">
-    //         <p className="text-sm text-gray-300 mb-2">
-    //           🗣️ Try saying one of these:
-    //         </p>
-    //         <div className="space-y-2">
-    //           {replySuggestions.map((s, i) => (
-    //             <div
-    //               key={i}
-    //               className="bg-green-700 text-white px-4 py-2 rounded"
-    //             >
-    //               {s}
-    //             </div>
-    //           ))}
-    //         </div>
-    //       </div>
-    //     )}
-
-    //     {/* CONTROL BUTTONS */}
-    //     <ControlButtons
-    //       isRecording={isRecording}
-    //       isProcessing={isProcessing}
-    //       toggleRecording={toggleRecording}
-    //       isPlaying={isPlaying}
-    //       stopAudio={stopAudio}
-    //       clearConversation={clearConversation}
-    //     />
-
-    //     {/* AUDIO PLAYER (INVISIBLE) */}
-    //     <audio ref={audioRef} style={{ display: "none" }} />
-    //   </div>
-    // </div>
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
       <div className="container mx-auto px-6 py-10 max-w-3xl text-lg leading-relaxed">
         {/* HEADER */}
@@ -806,6 +706,7 @@ const VoiceAIAssistant: React.FC = () => {
             </select>
           </div>
         </div>
+        <button onClick={handleEnableVoice}>🎧 Enable Voice</button>
 
         {/* ERROR ALERT */}
         {error && <ErrorAlert error={error} />}
@@ -851,7 +752,6 @@ const VoiceAIAssistant: React.FC = () => {
 
         {/* AUDIO PLAYER (INVISIBLE) */}
         <audio ref={audioRef} style={{ display: "none" }} />
-        <button onClick={requestAudioPermission}>🎧 Enable Voice</button>
       </div>
     </div>
   );
