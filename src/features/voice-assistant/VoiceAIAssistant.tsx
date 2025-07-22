@@ -435,16 +435,22 @@ const VoiceAIAssistant: React.FC = () => {
     }
   };
 
-  const requestAudioPermission = async () => {
-    try {
-      const dummy = new Audio();
-      dummy.src =
-        "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...";
-      await dummy.play(); // sẽ không phát âm thanh nhưng giúp lấy quyền
-      setAudioEnabled(true);
-    } catch (err) {
-      console.warn("User denied audio autoplay:", err);
-    }
+  const enableAudioPlayback = () => {
+    const dummyAudio = new Audio(
+      "https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"
+    ); // ~1s
+    dummyAudio.addEventListener("canplaythrough", () => {
+      dummyAudio
+        .play()
+        .then(() => {
+          setAudioEnabled(true);
+          console.log("🔊 Audio playback enabled");
+        })
+        .catch((err) => {
+          console.warn("❌ User denied audio autoplay:", err);
+        });
+    });
+    dummyAudio.load();
   };
 
   const toggleRecording = () => {
@@ -779,10 +785,10 @@ const VoiceAIAssistant: React.FC = () => {
         {!audioEnabled && (
           <div className="flex justify-center my-4">
             <button
-              onClick={requestAudioPermission}
+              onClick={enableAudioPlayback}
               className="bg-blue-500 text-white px-6 py-3 rounded shadow"
             >
-              🎧 Start App & Enable Audio
+              Cấp quyền phát âm thanh
             </button>
           </div>
         )}
