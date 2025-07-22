@@ -9,6 +9,7 @@ import ErrorAlert from "./components/ErrorAlert";
 import { createUserMessage, createAssistantMessage } from "./types/logic";
 import type { Message, VoiceSettings } from "./types/types";
 import FloatingFeedback from "./components/FloatingFeedback";
+
 const VoiceAIAssistant: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -20,6 +21,7 @@ const VoiceAIAssistant: React.FC = () => {
   const [sampleMode, setSampleMode] = useState(false);
   const [replySuggestions, setReplySuggestions] = useState<string[]>([]);
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [suggestingIndex, setSuggestingIndex] = useState<number | null>(null);
 
   const [connectionStatus] = useState<
     "connected" | "disconnected" | "connecting"
@@ -195,7 +197,7 @@ const VoiceAIAssistant: React.FC = () => {
       setMessages((prev) => [...prev, assistantMessage]);
 
       console.log("🔊 Text to TTS:", aiText);
-      await handleTextToSpeech(aiText);
+      // await handleTextToSpeech(aiText);
     } catch (error) {
       console.error("🛑 Send Message Error:", error);
       setError("Failed to process message: " + (error as Error).message);
@@ -572,6 +574,8 @@ const VoiceAIAssistant: React.FC = () => {
   // };
 
   const handleSuggestReplyAt = async (index: number) => {
+    if (suggestingIndex !== null) return; // prevent spam clicks
+    setSuggestingIndex(index);
     try {
       const contextMessages = messages.slice(0, index + 1);
 
@@ -836,7 +840,7 @@ const VoiceAIAssistant: React.FC = () => {
         />
 
         {/* AUDIO PLAYER (INVISIBLE) */}
-        <audio ref={audioRef} style={{ display: "none" }} />
+        {/* <audio ref={audioRef} style={{ display: "none" }} /> */}
         <FloatingFeedback />
       </div>
     </div>

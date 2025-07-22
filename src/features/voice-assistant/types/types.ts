@@ -5,6 +5,7 @@ export interface Message {
   timestamp: Date;
   isAudio?: boolean;
   suggestedReply?: string;
+  suggestingIndex?: number | null;
 }
 
 export interface VoiceSettings {
