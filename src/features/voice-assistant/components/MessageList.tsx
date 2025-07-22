@@ -6,9 +6,11 @@ interface Props {
   messages: Message[];
   sampleMode?: boolean;
   onSuggestReply?: (index: number) => void;
+  isProcessing?: boolean;
+  suggestingIndex?: number | null;
 }
 
-const MessageList: React.FC<Props> = ({ messages, onSuggestReply }) => (
+const MessageList: React.FC<Props> = ({ messages, onSuggestReply, isProcessing, suggestingIndex }) => (
   <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 mb-6 min-h-[400px] max-h-[600px] overflow-y-auto">
     {messages.length === 0 ? (
       <div className="text-center text-slate-400 py-12">
@@ -44,18 +46,32 @@ const MessageList: React.FC<Props> = ({ messages, onSuggestReply }) => (
                 </p>
 
                 {isAssistant && onSuggestReply && (
-                  <button
-                    onClick={() => onSuggestReply(index)}
-                    className="absolute -top-2 -right-2 text-xs bg-yellow-500 hover:bg-yellow-400 text-black px-1 py-0.5 rounded"
-                    title="Get reply suggestion"
-                  >
-                    Bấm vào đây để gợi ý
-                  </button>
+                  <div className="flex items-center gap-2 absolute -top-2 -right-2">
+                    <button
+                      onClick={() => onSuggestReply(index)}
+                      className="text-xs bg-yellow-500 hover:bg-yellow-400 text-black px-1 py-0.5 rounded"
+                      title="Get reply suggestion"
+                      disabled={suggestingIndex === index}
+                    >
+                      Bấm vào đây để gợi ý
+                    </button>
+                    {suggestingIndex === index && (
+                      <span className="w-4 h-4 rounded-full border-2 border-yellow-400 border-t-transparent animate-spin inline-block"></span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
           );
         })}
+        {isProcessing && (
+          <div className="flex justify-start">
+            <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-slate-700 text-slate-200 animate-pulse">
+              <div className="h-4 w-32 bg-slate-500 rounded mb-2"></div>
+              <div className="h-4 w-24 bg-slate-600 rounded"></div>
+            </div>
+          </div>
+        )}
       </div>
     )}
   </div>
