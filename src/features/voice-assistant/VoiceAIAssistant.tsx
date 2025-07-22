@@ -851,6 +851,7 @@ const VoiceAIAssistant: React.FC = () => {
 
         {/* AUDIO PLAYER (INVISIBLE) */}
         <audio ref={audioRef} style={{ display: "none" }} />
+        <button onClick={requestAudioPermission}>🎧 Enable Voice</button>
       </div>
     </div>
   );
