@@ -35,7 +35,7 @@ const ControlButtons: React.FC<Props> = ({
       )}
     </button>
 
-    <button
+    {/* <button
       onClick={isPlaying ? stopAudio : () => {}}
       disabled={!isPlaying}
       className={`p-4 rounded-full transition-all duration-200 ${
@@ -49,14 +49,14 @@ const ControlButtons: React.FC<Props> = ({
       ) : (
         <Volume2 className="w-6 h-6" />
       )}
-    </button>
+    </button> */}
 
-    <button
+    {/* <button
       onClick={clearConversation}
       className="p-4 rounded-full bg-slate-600 hover:bg-slate-700 shadow-lg shadow-slate-500/25 transition-all duration-200"
     >
       <MessageCircle className="w-6 h-6" />
-    </button>
+    </button> */}
   </div>
 );
 
