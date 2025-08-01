@@ -9,6 +9,18 @@ import ErrorAlert from "./components/ErrorAlert";
 import { createUserMessage, createAssistantMessage } from "./types/logic";
 import type { Message, VoiceSettings } from "./types/types";
 import FloatingFeedback from "./components/FloatingFeedback";
+import Sidebar from "./components/Sidebar";
+// Mở lại Progress và Progress Panel
+import ProgressPanel from "./components/ProgressPanel";
+// Ẩn các import không cần thiết để code sạch sẽ
+// import StorageInfo from "./components/StorageInfo";
+// import VocabularyDisplay from "./components/VocabularyDisplay";
+// Mở lại ProgressService để sử dụng cho Progress
+import { ProgressService } from "./service/progressService";
+// import { VocabularyUtils } from "./utils/vocabularyUtils";
+// import { debugProgress, createTestData } from "./utils/debugProgress";
+// import { LocalStorageUtils } from "./utils/localStorageUtils";
+// import { testDateHandling } from "./utils/testDateHandling";
 
 const VoiceAIAssistant: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -22,6 +34,11 @@ const VoiceAIAssistant: React.FC = () => {
   const [replySuggestions, setReplySuggestions] = useState<string[]>([]);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [suggestingIndex, setSuggestingIndex] = useState<number | null>(null);
+  // Mở lại state progress panel
+  const [showProgressPanel, setShowProgressPanel] = useState(false);
+  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
+  // State cho từ vựng - Đã ẩn
+  // const [vocabularyWords, setVocabularyWords] = useState<VocabularyWord[]>([]);
 
   const [connectionStatus] = useState<
     "connected" | "disconnected" | "connecting"
@@ -69,6 +86,18 @@ const VoiceAIAssistant: React.FC = () => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
 
+  // Cập nhật từ vựng khi messages thay đổi - Đã ẩn
+  /*
+  useEffect(() => {
+    if (messages.length > 0 && selectedTopic) {
+      const words = VocabularyUtils.analyzeVocabulary(messages, selectedTopic);
+      setVocabularyWords(words);
+    } else {
+      setVocabularyWords([]);
+    }
+  }, [messages, selectedTopic]);
+  */
+
   useEffect(() => {
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
       setError("Trình duyệt không hỗ trợ SpeechRecognition");
@@ -100,6 +129,9 @@ const VoiceAIAssistant: React.FC = () => {
           console.log("Gửi message:", finalTranscript.trim());
           handleSendMessage(finalTranscript.trim());
           setTranscribedText("");
+          // Dừng ghi âm sau khi gửi message
+          recognitionRef.current?.stop();
+          setIsRecording(false);
         }, 3000);
       }
     };
@@ -111,9 +143,8 @@ const VoiceAIAssistant: React.FC = () => {
 
     recognitionRef.current.onend = () => {
       console.log("onend, isRecordingRef.current:", isRecordingRef.current);
-      if (isRecordingRef.current) {
-        recognitionRef.current?.start();
-      }
+      // Không tự động start lại - để người dùng nhấn lại nút để ghi âm mới
+      setIsRecording(false);
     };
 
     if ("speechSynthesis" in window) {
@@ -136,6 +167,21 @@ const VoiceAIAssistant: React.FC = () => {
     }
   }, []);
 
+  // Mở lại tự động lưu tiến trình
+  useEffect(() => {
+    return () => {
+      if (messages.length > 0 && selectedTopic && sessionStartTime) {
+        const progress = ProgressService.calculateSessionMetrics(messages, selectedTopic, sessionStartTime);
+        const success = ProgressService.saveProgress(progress);
+        if (success) {
+          console.log("💾 Tự động lưu tiến trình khi rời trang:", progress);
+        } else {
+          console.error("❌ Lỗi tự động lưu tiến trình");
+        }
+      }
+    };
+  }, [messages, selectedTopic, sessionStartTime]);
+
   const handleSendMessage = async (text: string, customPrompt?: string) => {
     if (!text.trim()) return;
 
@@ -145,6 +191,8 @@ const VoiceAIAssistant: React.FC = () => {
     setIsProcessing(false);
     return;
   }
+
+    // Logic lưu tiến trình đã được di chuyển vào sau khi nhận phản hồi từ AI
     // if (!promptToUse) {
     //   setError("Bạn cần chọn chủ đề luyện nói trước khi bắt đầu.");
     //   setIsProcessing(false);
@@ -220,6 +268,13 @@ const VoiceAIAssistant: React.FC = () => {
       const assistantMessage = createAssistantMessage(aiText);
       setMessages((prev) => [...prev, assistantMessage]);
 
+      // Lưu tiến trình sau khi hoàn thành một đoạn hội thoại
+      const updatedMessages = [...currentMessages, assistantMessage];
+      const userMessages = updatedMessages.filter(msg => msg.type === 'user');
+      if (userMessages.length >= 3 && selectedTopic && sessionStartTime) {
+        saveCurrentProgress();
+      }
+
       // await handleTextToSpeech(aiText);
     } catch (error) {
       console.error("🛑 Send Message Error:", error);
@@ -229,7 +284,6 @@ const VoiceAIAssistant: React.FC = () => {
     }
   };
 
-  
   const handleTextToSpeech = async (text: string) => {
     if (!audioEnabled) {
       console.warn("🔇 Audio playback not enabled yet");
@@ -314,9 +368,9 @@ const VoiceAIAssistant: React.FC = () => {
 
   const toggleRecording = () => {
     if (isRecording) {
-      recognitionRef.current?.stop();
-      setIsRecording(false);
-      console.log("⏹️ Stopped recording");
+      // Không cho phép dừng thủ công - ghi âm sẽ tự động dừng sau khi nói xong
+      console.log("⏹️ Recording will stop automatically after speaking");
+      return;
     } else {
       try {
         recognitionRef.current?.start();
@@ -339,12 +393,106 @@ const VoiceAIAssistant: React.FC = () => {
     setIsPlaying(false);
   };
 
+  // Mở lại function saveCurrentProgress
+  const saveCurrentProgress = () => {
+    if (messages.length > 0 && selectedTopic && sessionStartTime) {
+      const progress = ProgressService.calculateSessionMetrics(messages, selectedTopic, sessionStartTime);
+      const success = ProgressService.saveProgress(progress);
+      
+      if (success) {
+        console.log("💾 Đã lưu tiến trình học:", progress);
+        
+        // Hiển thị thông báo thành công
+        setError(null);
+        const successMessage = `✅ Đã lưu tiến trình học! Điểm: ${progress.metrics.fluencyScore}/100`;
+        setTimeout(() => {
+          setError(successMessage);
+          setTimeout(() => setError(null), 3000);
+        }, 100);
+      } else {
+        setError("❌ Lỗi lưu tiến trình học");
+        setTimeout(() => setError(null), 2000);
+      }
+    } else {
+      setError("❌ Không có dữ liệu để lưu tiến trình");
+      setTimeout(() => setError(null), 2000);
+    }
+  };
+
+  // Ẩn tất cả các function test và debug để code sạch sẽ
+  /*
+  // Function để test việc lưu tiến trình (có thể xóa sau)
+  const testSaveProgress = () => {
+    if (!selectedTopic) {
+      setError("❌ Vui lòng chọn chủ đề trước");
+      return;
+    }
+    
+    const testMessages = [
+      { id: '1', type: 'user' as const, content: 'Hello, how are you?', timestamp: new Date() },
+      { id: '2', type: 'assistant' as const, content: 'I am fine, thank you!', timestamp: new Date() },
+      { id: '3', type: 'user' as const, content: 'What is your name?', timestamp: new Date() },
+      { id: '4', type: 'assistant' as const, content: 'My name is AI Assistant.', timestamp: new Date() },
+      { id: '5', type: 'user' as const, content: 'Nice to meet you!', timestamp: new Date() },
+    ];
+    
+    const testStartTime = new Date(Date.now() - 10 * 60 * 1000); // 10 phút trước
+    const progress = ProgressService.calculateSessionMetrics(testMessages, selectedTopic, testStartTime);
+    ProgressService.saveProgress(progress);
+    
+    setError("🧪 Đã tạo dữ liệu test tiến trình!");
+    setTimeout(() => setError(null), 2000);
+  };
+
+  // Debug function
+  const debugProgressData = () => {
+    debugProgress();
+    setError("🔍 Đã debug tiến trình - xem console");
+    setTimeout(() => setError(null), 2000);
+  };
+
+  const createTestProgressData = () => {
+    createTestData();
+    setError("🧪 Đã tạo dữ liệu test mẫu!");
+    setTimeout(() => setError(null), 2000);
+  };
+
+  // Debug localStorage
+  const debugLocalStorage = () => {
+    LocalStorageUtils.debugAll();
+    setError("🔍 Đã debug localStorage - xem console");
+    setTimeout(() => setError(null), 2000);
+  };
+
+  // Kiểm tra localStorage
+  const checkLocalStorage = () => {
+    const isAvailable = LocalStorageUtils.isAvailable();
+    if (isAvailable) {
+      setError("✅ localStorage khả dụng");
+    } else {
+      setError("❌ localStorage không khả dụng");
+    }
+    setTimeout(() => setError(null), 2000);
+  };
+
+  // Test date handling
+  const testDateHandlingFunction = () => {
+    testDateHandling();
+    setError("🧪 Date handling test completed! Check console for results.");
+    setTimeout(() => setError(null), 3000);
+  };
+  */
+
   const clearConversation = () => {
+    // Lưu tiến trình học trước khi xóa
+    saveCurrentProgress();
+    
     setMessages([]);
     setTranscribedText("");
     setError(null);
     setSelectedTopic(null);
     setSystemPrompt(null);
+    setSessionStartTime(null);
     localStorage.removeItem("selectedTopic");
     localStorage.removeItem("systemPrompt");
   };
@@ -377,6 +525,7 @@ const VoiceAIAssistant: React.FC = () => {
     setSelectedTopic(topicName);
     setSystemPrompt(prompt);
     setSampleMode(false);
+    setSessionStartTime(new Date()); // Bắt đầu session mới
     localStorage.setItem("selectedTopic", topicName);
     localStorage.setItem("systemPrompt", prompt);
     handleSendMessage(initialMessage, prompt);
@@ -503,66 +652,34 @@ const VoiceAIAssistant: React.FC = () => {
 
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
-      <div className="container mx-auto px-6 py-10 max-w-3xl text-lg leading-relaxed">
-        {/* HEADER */}
-        <Header />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex">
+      {/* SIDEBAR */}
+      <Sidebar
+        topics={topics}
+        selectedTopic={selectedTopic}
+        onSelectTopic={handleSelectTopic}
+        onShowFullProgress={() => setShowProgressPanel(true)}
+        onSaveProgress={saveCurrentProgress}
+        hasMessages={messages.length > 0}
+      />
 
-        {/* STATUS BAR */}
-        {/* <StatusBar
-          connectionStatus={connectionStatus}
-          isRecording={isRecording}
-          isProcessing={isProcessing}
-          toggleSettings={() => setShowSettings(!showSettings)}
-        /> */}
-
-        {/* SETTINGS PANEL */}
-        {/* {showSettings && (
-          <SettingsPanel
-            voiceSettings={voiceSettings}
-            setVoiceSettings={setVoiceSettings}
-          />
-        )} */}
-
-        {/* TOPIC SELECTOR */}
-        <div className="mb-8">
-          <div className="mb-6">
-            <label
-              htmlFor="topicSelect"
-              className="block mb-2 font-semibold text-lg"
-            >
-              🎯 Chọn chủ đề luyện nói:
-            </label>
-            <select
-              id="topicSelect"
-              className="w-full px-4 py-2 rounded-md bg-gray-100 border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              value={selectedTopic || ""}
-              onChange={(e) => {
-                const selected = topics.find((t) => t.name === e.target.value);
-                if (selected) {
-                  handleSelectTopic(
-                    selected.name,
-                    selected.prompt,
-                    selected.initialMessage
-                  );
-                }
-              }}
-            >
-              <option value="" disabled>
-                Chọn chủ đề
-              </option>
-              {topics.map((topic) => (
-                <option key={topic.name} value={topic.name}>
-                  {topic.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+      {/* MAIN CONTENT */}
+      <div className="flex-1 flex flex-col">
+        <div className="container mx-auto px-6 py-6 max-w-4xl">
+          {/* HEADER */}
+          <Header />
    
 
         {/* ERROR ALERT */}
         {error && <ErrorAlert error={error} />}
+
+        {/* Ẩn StorageInfo để giao diện sạch sẽ */}
+        {/* 
+        STORAGE INFO
+        <StorageInfo />
+        */}
+
+
 
         {/* LIVE TRANSCRIPTION */}
         {transcribedText && <TranscriptionBox text={transcribedText} />}
@@ -576,17 +693,30 @@ const VoiceAIAssistant: React.FC = () => {
           suggestingIndex={suggestingIndex}
         />
 
+        {/* VOCABULARY DISPLAY - Đã ẩn */}
+        {/* 
+        {vocabularyWords.length > 0 && selectedTopic && (
+          <VocabularyDisplay 
+            words={vocabularyWords} 
+            topic={selectedTopic} 
+          />
+        )}
+        */}
+
         {/* SUGGESTED REPLIES */}
         {replySuggestions.length > 0 && (
-          <div className="mb-8">
-            <p className="text-base text-gray-700 mb-3 font-medium">
-              🗣️ Gợi ý câu bạn có thể thử nói:
-            </p>
+          <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-yellow-400/30 shadow-lg">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+              <h3 className="text-lg font-semibold text-white/90">
+                💡 Gợi ý câu bạn có thể thử nói
+              </h3>
+            </div>
             <div className="space-y-3">
               {replySuggestions.map((s, i) => (
                 <div
                   key={i}
-                  className="bg-blue-100 text-blue-800 px-4 py-2 rounded-md border border-blue-300"
+                  className="bg-gradient-to-r from-yellow-400/20 to-orange-400/20 border border-yellow-400/50 rounded-xl px-4 py-3 text-white/90 font-medium"
                 >
                   {s}
                 </div>
@@ -608,6 +738,13 @@ const VoiceAIAssistant: React.FC = () => {
         {/* AUDIO PLAYER (INVISIBLE) */}
         {/* <audio ref={audioRef} style={{ display: "none" }} /> */}
         <FloatingFeedback />
+        
+        {/* Mở lại ProgressPanel */}
+        <ProgressPanel 
+          isOpen={showProgressPanel} 
+          onClose={() => setShowProgressPanel(false)} 
+        />
+        </div>
       </div>
     </div>
   );
