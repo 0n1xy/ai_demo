@@ -12,11 +12,17 @@ import FloatingFeedback from "./components/FloatingFeedback";
 import Sidebar from "./components/Sidebar";
 // Mở lại Progress và Progress Panel
 import ProgressPanel from "./components/ProgressPanel";
+import TranslationPanel from "./components/TranslationPanel";
+import VocabularyManager from "./components/VocabularyManager";
+import VocabularyReview from "./components/VocabularyReview";
+// import PronunciationResultDisplay from "./components/PronunciationResult";
 // Ẩn các import không cần thiết để code sạch sẽ
 // import StorageInfo from "./components/StorageInfo";
 // import VocabularyDisplay from "./components/VocabularyDisplay";
 // Mở lại ProgressService để sử dụng cho Progress
 import { ProgressService } from "./service/progressService";
+import { PronunciationService } from "./service/pronunciationService";
+import type { PronunciationResult } from "./service/pronunciationService";
 // import { VocabularyUtils } from "./utils/vocabularyUtils";
 // import { debugProgress, createTestData } from "./utils/debugProgress";
 // import { LocalStorageUtils } from "./utils/localStorageUtils";
@@ -39,6 +45,22 @@ const VoiceAIAssistant: React.FC = () => {
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
   // State cho từ vựng - Đã ẩn
   // const [vocabularyWords, setVocabularyWords] = useState<VocabularyWord[]>([]);
+  
+  // State cho pronunciation assessment
+  const [pronunciationResult, setPronunciationResult] = useState<PronunciationResult | null>(null);
+  const [isAssessingPronunciation, setIsAssessingPronunciation] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  
+  // State cho translation
+  const [showTranslationPanel, setShowTranslationPanel] = useState(false);
+  
+  // State cho vocabulary manager
+  const [showVocabularyManager, setShowVocabularyManager] = useState(false);
+  const [openVocabularyManagerInAddMode, setOpenVocabularyManagerInAddMode] = useState(false);
+  
+  // MediaRecorder refs
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const [connectionStatus] = useState<
     "connected" | "disconnected" | "connecting"
@@ -109,6 +131,14 @@ const VoiceAIAssistant: React.FC = () => {
     recognitionRef.current.interimResults = true;
     recognitionRef.current.lang = voiceSettings.language;
 
+    // Thiết lập MediaRecorder để ghi âm
+    let mediaRecorder: MediaRecorder | null = null;
+    let audioChunks: Blob[] = [];
+
+    // Lưu vào refs để sử dụng ở nơi khác
+    mediaRecorderRef.current = mediaRecorder;
+    audioChunksRef.current = audioChunks;
+
     recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
       let finalTranscript = "";
       let interimTranscript = "";
@@ -125,13 +155,21 @@ const VoiceAIAssistant: React.FC = () => {
 
       if (finalTranscript.trim()) {
         if (sendTimeout.current) clearTimeout(sendTimeout.current);
-        sendTimeout.current = setTimeout(() => {
+        sendTimeout.current = setTimeout(async () => {
           console.log("Gửi message:", finalTranscript.trim());
-          handleSendMessage(finalTranscript.trim());
-          setTranscribedText("");
-          // Dừng ghi âm sau khi gửi message
+          
+          // Dừng ghi âm và đánh giá phát âm
+          stopMediaRecording();
           recognitionRef.current?.stop();
           setIsRecording(false);
+          
+          // Đánh giá phát âm nếu có audio blob
+          if (audioBlob) {
+            await assessPronunciation(audioBlob, finalTranscript.trim());
+          }
+          
+          handleSendMessage(finalTranscript.trim());
+          setTranscribedText("");
         }, 3000);
       }
     };
@@ -373,6 +411,9 @@ const VoiceAIAssistant: React.FC = () => {
       return;
     } else {
       try {
+        // Bắt đầu ghi âm media
+        startMediaRecording();
+        
         recognitionRef.current?.start();
         setIsRecording(true);
         setError(null);
@@ -391,6 +432,60 @@ const VoiceAIAssistant: React.FC = () => {
     }
     synthRef.current?.cancel();
     setIsPlaying(false);
+  };
+
+  // Bắt đầu ghi âm media
+  const startMediaRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        setAudioBlob(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+    } catch (error) {
+      console.error('Error starting media recorder:', error);
+    }
+  };
+
+  // Dừng ghi âm media
+  const stopMediaRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  // Đánh giá phát âm
+  const assessPronunciation = async (audioBlob: Blob, referenceText: string) => {
+    try {
+      setIsAssessingPronunciation(true);
+      setError(null);
+      
+      console.log("🎯 Đang đánh giá phát âm...");
+      const result = await PronunciationService.assessPronunciation(audioBlob, referenceText);
+      
+      setPronunciationResult(result);
+      PronunciationService.savePronunciationResult(result);
+      
+      console.log("✅ Đánh giá phát âm hoàn thành:", result.overallScore);
+    } catch (error) {
+      console.error("❌ Lỗi đánh giá phát âm:", error);
+      setError("Không thể đánh giá phát âm. Vui lòng thử lại.");
+    } finally {
+      setIsAssessingPronunciation(false);
+    }
   };
 
   // Mở lại function saveCurrentProgress
@@ -664,88 +759,131 @@ const VoiceAIAssistant: React.FC = () => {
       />
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col">
-        <div className="container mx-auto px-6 py-6 max-w-4xl">
-          {/* HEADER */}
-          <Header />
-   
+      <div className="flex-1 flex">
+        {/* CENTER CONTENT */}
+        <div className="flex-1 flex flex-col">
+          <div className="container mx-auto px-6 py-6 max-w-4xl">
+            {/* HEADER */}
+            <Header />
 
-        {/* ERROR ALERT */}
-        {error && <ErrorAlert error={error} />}
+            {/* ERROR ALERT */}
+            {error && <ErrorAlert error={error} />}
 
-        {/* Ẩn StorageInfo để giao diện sạch sẽ */}
-        {/* 
-        STORAGE INFO
-        <StorageInfo />
-        */}
+            {/* PRONUNCIATION ASSESSMENT ALERT */}
+            {isAssessingPronunciation && (
+              <div className="fixed top-4 right-4 bg-blue-500/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg shadow-lg z-50 max-w-sm">
+                🎯 Đang đánh giá phát âm...
+              </div>
+            )}
 
+            {/* LIVE TRANSCRIPTION */}
+            {transcribedText && <TranscriptionBox text={transcribedText} />}
 
+            {/* MESSAGE LIST */}
+            <MessageList
+              messages={messages}
+              sampleMode={sampleMode}
+              onSuggestReply={handleSuggestReplyAt}
+              isProcessing={isProcessing}
+              suggestingIndex={suggestingIndex}
+            />
 
-        {/* LIVE TRANSCRIPTION */}
-        {transcribedText && <TranscriptionBox text={transcribedText} />}
-
-        {/* MESSAGE LIST */}
-        <MessageList
-          messages={messages}
-          sampleMode={sampleMode}
-          onSuggestReply={handleSuggestReplyAt}
-          isProcessing={isProcessing}
-          suggestingIndex={suggestingIndex}
-        />
-
-        {/* VOCABULARY DISPLAY - Đã ẩn */}
-        {/* 
-        {vocabularyWords.length > 0 && selectedTopic && (
-          <VocabularyDisplay 
-            words={vocabularyWords} 
-            topic={selectedTopic} 
-          />
-        )}
-        */}
-
-        {/* SUGGESTED REPLIES */}
-        {replySuggestions.length > 0 && (
-          <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-yellow-400/30 shadow-lg">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-              <h3 className="text-lg font-semibold text-white/90">
-                💡 Gợi ý câu bạn có thể thử nói
-              </h3>
-            </div>
-            <div className="space-y-3">
-              {replySuggestions.map((s, i) => (
-                <div
-                  key={i}
-                  className="bg-gradient-to-r from-yellow-400/20 to-orange-400/20 border border-yellow-400/50 rounded-xl px-4 py-3 text-white/90 font-medium"
-                >
-                  {s}
+            {/* SUGGESTED REPLIES */}
+            {replySuggestions.length > 0 && (
+              <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-yellow-400/30 shadow-lg">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                  <h3 className="text-lg font-semibold text-white/90">
+                    💡 Gợi ý câu bạn có thể thử nói
+                  </h3>
                 </div>
-              ))}
-            </div>
+                <div className="space-y-3">
+                  {replySuggestions.map((s, i) => (
+                    <div
+                      key={i}
+                      className="bg-gradient-to-r from-yellow-400/20 to-orange-400/20 border border-yellow-400/50 rounded-xl px-4 py-3 text-white/90 font-medium"
+                    >
+                      {s}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CONTROL BUTTONS */}
+            <ControlButtons
+              isRecording={isRecording}
+              isProcessing={isProcessing || isAssessingPronunciation}
+              toggleRecording={toggleRecording}
+              isPlaying={isPlaying}
+              stopAudio={stopAudio}
+              clearConversation={clearConversation}
+              onTranslate={() => setShowTranslationPanel(true)}
+              hasMessages={messages.length > 0}
+              onOpenVocabulary={() => setShowVocabularyManager(true)}
+            />
           </div>
-        )}
+        </div>
 
-        {/* CONTROL BUTTONS */}
-        <ControlButtons
-          isRecording={isRecording}
-          isProcessing={isProcessing}
-          toggleRecording={toggleRecording}
-          isPlaying={isPlaying}
-          stopAudio={stopAudio}
-          clearConversation={clearConversation}
-        />
-
-        {/* AUDIO PLAYER (INVISIBLE) */}
-        {/* <audio ref={audioRef} style={{ display: "none" }} /> */}
-        <FloatingFeedback />
-        
-        {/* Mở lại ProgressPanel */}
-        <ProgressPanel 
-          isOpen={showProgressPanel} 
-          onClose={() => setShowProgressPanel(false)} 
-        />
+        {/* RIGHT SIDEBAR - VOCABULARY SECTION */}
+        <div className="w-80 h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900 border-l border-white/20 flex flex-col p-4">
+                          <VocabularyReview 
+                  onOpenVocabularyManager={() => {
+                    setOpenVocabularyManagerInAddMode(false);
+                    setShowVocabularyManager(true);
+                  }}
+                  onOpenAddVocabulary={() => {
+                    setOpenVocabularyManagerInAddMode(true);
+                    setShowVocabularyManager(true);
+                  }}
+                />
         </div>
       </div>
+
+      {/* MODALS AND PANELS */}
+      {/* ProgressPanel */}
+      <ProgressPanel 
+        isOpen={showProgressPanel} 
+        onClose={() => setShowProgressPanel(false)} 
+      />
+
+      {/* Translation Panel */}
+      <TranslationPanel
+        messages={messages}
+        isOpen={showTranslationPanel}
+        onClose={() => setShowTranslationPanel(false)}
+      />
+      
+      {/* Vocabulary Manager */}
+              <VocabularyManager
+          isOpen={showVocabularyManager}
+          onClose={() => {
+            setShowVocabularyManager(false);
+            setOpenVocabularyManagerInAddMode(false);
+          }}
+          openInAddMode={openVocabularyManagerInAddMode}
+        />
+
+      {/* Pronunciation Result Modal */}
+      {pronunciationResult && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-slate-800/90 to-purple-800/90 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-2xl max-w-md">
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-white mb-4">Pronunciation Score</h3>
+              <div className="text-4xl font-bold text-green-400 mb-2">
+                {pronunciationResult.overallScore.toFixed(1)}/100
+              </div>
+              <p className="text-white/70 mb-4">{pronunciationResult.detailedFeedback}</p>
+              <button
+                onClick={() => setPronunciationResult(null)}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

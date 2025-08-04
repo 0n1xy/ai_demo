@@ -1,6 +1,7 @@
-import React from "react";
-import { MessageCircle } from "lucide-react";
+import React, { useState } from "react";
+import { MessageCircle, Languages, Copy, Check } from "lucide-react";
 import type { Message } from "../types/types";
+import { TranslationService } from "../service/translationService";
 
 interface Props {
   messages: Message[];
@@ -15,7 +16,38 @@ const MessageList: React.FC<Props> = React.memo(({
   onSuggestReply,
   isProcessing,
   suggestingIndex,
-}) => (
+}) => {
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
+  const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
+
+  // Dịch nhanh một tin nhắn
+  const translateMessage = async (messageId: string, content: string) => {
+    if (translations[messageId] || isTranslating[messageId]) return;
+
+    setIsTranslating(prev => ({ ...prev, [messageId]: true }));
+    try {
+      const result = await TranslationService.translateText(content, 'vi');
+      setTranslations(prev => ({ ...prev, [messageId]: result.translatedText }));
+    } catch (error) {
+      console.error('Translation failed:', error);
+    } finally {
+      setIsTranslating(prev => ({ ...prev, [messageId]: false }));
+    }
+  };
+
+  // Sao chép tin nhắn
+  const copyMessage = async (text: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMessage(messageId);
+      setTimeout(() => setCopiedMessage(null), 2000);
+    } catch (error) {
+      console.error('Copy failed:', error);
+    }
+  };
+
+  return (
   <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-6 min-h-[400px] max-h-[600px] overflow-y-auto border border-white/20">
     {messages.length === 0 ? (
       <div className="text-center text-white/60 py-12">
@@ -47,9 +79,50 @@ const MessageList: React.FC<Props> = React.memo(({
                 style={{ whiteSpace: "pre-wrap" }}
               >
                 <p className="text-sm leading-relaxed">{message.content}</p>
-                <p className="text-xs opacity-70 mt-2 text-right">
-                  {message.timestamp.toLocaleTimeString()}
-                </p>
+                
+                {/* Translation */}
+                {translations[message.id] && (
+                  <div className="mt-2 p-2 bg-white/10 rounded border border-white/20">
+                    <p className="text-xs text-white/60 mb-1">Bản dịch:</p>
+                    <p className="text-sm text-white/90">{translations[message.id]}</p>
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-xs opacity-70">
+                    {message.timestamp.toLocaleTimeString()}
+                  </p>
+                  
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => copyMessage(message.content, message.id)}
+                      className="p-1 hover:bg-white/10 rounded transition-colors"
+                      title="Sao chép tin nhắn"
+                    >
+                      {copiedMessage === message.id ? (
+                        <Check className="w-3 h-3 text-green-400" />
+                      ) : (
+                        <Copy className="w-3 h-3 text-white/70" />
+                      )}
+                    </button>
+                    
+                    {!translations[message.id] && (
+                      <button
+                        onClick={() => translateMessage(message.id, message.content)}
+                        disabled={isTranslating[message.id]}
+                        className="p-1 hover:bg-white/10 rounded transition-colors disabled:opacity-50"
+                        title="Dịch tin nhắn"
+                      >
+                        {isTranslating[message.id] ? (
+                          <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin"></div>
+                        ) : (
+                          <Languages className="w-3 h-3 text-white/70" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
 
                 {isAssistant && onSuggestReply && (
                   <div className="flex items-center gap-2 absolute -top-3 -right-3">
@@ -81,7 +154,8 @@ const MessageList: React.FC<Props> = React.memo(({
       </div>
     )}
   </div>
-));
+  );
+});
 
 MessageList.displayName = 'MessageList';
 

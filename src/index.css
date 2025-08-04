@@ -13,6 +13,20 @@
   scrollbar-width: none;  /* Firefox */
 }
 
+/* Hide vertical scrollbar for entire page */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
+html,
+body {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+  overscroll-behavior: none;
+  scroll-behavior: smooth;
+}
+
 /* Optimize animations for better performance */
 * {
   -webkit-font-smoothing: antialiased;
@@ -37,11 +51,4 @@
 .backdrop-blur-md {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-}
-
-/* App.css hoặc index.css */
-html,
-body {
-  overscroll-behavior: none;
-  scroll-behavior: smooth;
 }
