@@ -33,29 +33,29 @@ const FloatingFeedback: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-6 left-6 z-50">
+    <div className="fixed bottom-4 sm:bottom-6 left-4 sm:left-6 z-50">
       {!open && (
         <button
           className="bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 group"
           onClick={() => setOpen(true)}
           title="Gửi phản hồi"
         >
-          <div className="flex items-center justify-center px-4 py-3 min-w-14 min-h-14">
+          <div className="flex items-center justify-center px-3 sm:px-4 py-2 sm:py-3 min-w-12 sm:min-w-14 min-h-12 sm:min-h-14">
             <span
               role="img"
               aria-label="feedback"
-              className="text-2xl group-hover:scale-110 transition-transform duration-150"
+              className="text-xl sm:text-2xl group-hover:scale-110 transition-transform duration-150"
             >
               💬
             </span>
-            <span className="ml-2 text-base font-semibold hidden sm:inline">
+            <span className="ml-2 text-sm sm:text-base font-semibold hidden sm:inline">
               Feedback
             </span>
           </div>
         </button>
       )}
       {open && (
-        <div className="bg-gray-800 rounded-2xl shadow-2xl p-4 w-80 animate-fade-in flex flex-col items-stretch text-white">
+        <div className="bg-gray-800 rounded-2xl shadow-2xl p-4 w-72 sm:w-80 animate-fade-in flex flex-col items-stretch text-white">
           <div className="flex justify-between items-center mb-2">
             <span className="font-bold text-white">Góp ý / Feedback</span>
             <button

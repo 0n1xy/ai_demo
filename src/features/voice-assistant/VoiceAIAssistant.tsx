@@ -7,7 +7,7 @@ import MessageList from "./components/MessageList";
 import ControlButtons from "./components/ControlButtons";
 import ErrorAlert from "./components/ErrorAlert";
 import { createUserMessage, createAssistantMessage } from "./types/logic";
-import type { Message, VoiceSettings } from "./types/types";
+import type { Message, VoiceSettings, Topic } from "./types/types";
 import FloatingFeedback from "./components/FloatingFeedback";
 import Sidebar from "./components/Sidebar";
 // Mở lại Progress và Progress Panel
@@ -15,6 +15,9 @@ import ProgressPanel from "./components/ProgressPanel";
 import TranslationPanel from "./components/TranslationPanel";
 import VocabularyManager from "./components/VocabularyManager";
 import VocabularyReview from "./components/VocabularyReview";
+import RoleInfo from "./components/RoleInfo";
+import MobileHeader from "./components/MobileHeader";
+import MobileSidebar from "./components/MobileSidebar";
 // import PronunciationResultDisplay from "./components/PronunciationResult";
 // Ẩn các import không cần thiết để code sạch sẽ
 // import StorageInfo from "./components/StorageInfo";
@@ -57,6 +60,13 @@ const VoiceAIAssistant: React.FC = () => {
   // State cho vocabulary manager
   const [showVocabularyManager, setShowVocabularyManager] = useState(false);
   const [openVocabularyManagerInAddMode, setOpenVocabularyManagerInAddMode] = useState(false);
+  const [vocabularyRefreshTrigger, setVocabularyRefreshTrigger] = useState(0);
+  
+  // State cho role info
+  const [showRoleInfo, setShowRoleInfo] = useState(false);
+  
+  // State cho mobile sidebar
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   
   // MediaRecorder refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -87,18 +97,102 @@ const VoiceAIAssistant: React.FC = () => {
   const AZURE_API_VERSION = import.meta.env.VITE_AZURE_API_VERSION;
   const GOOGLE_TTS_KEY = import.meta.env.VITE_GOOGLE_TTS_KEY;
 
-  const topics = [
+  const topics: Topic[] = [
     {
       name: "Công viên chủ đề",
-      prompt: `You are a curious visitor at a theme park. You are asking short, clear questions to the user who plays the role of a theme park staff member. Keep your responses concise (1–2 sentences), and always follow up with a polite question.`,
-      initialMessage: "Hello! How can I assist you in the theme park today?",
+      prompt: `You are a curious visitor at a theme park. Your role is to ask short, clear questions to the user who plays the role of a theme park staff member. You should be enthusiastic and interested in learning about the park's attractions, rides, shows, and services. Keep your responses concise (1–2 sentences), and always follow up with a polite question. 
+
+IMPORTANT ROLE CLARIFICATION:
+- You are the VISITOR asking questions
+- The user is the STAFF MEMBER answering your questions
+- You should ask about: ride information, show schedules, ticket prices, food options, park hours, safety rules
+- Always stay in character as the curious visitor
+- Do not answer questions about the park - you are asking them!`,
+      initialMessage: "Hi! I'm new here and I'm really excited to explore the theme park. Can you tell me about the attractions?",
+      aiRole: "Khách tham quan tò mò",
+      userRole: "Nhân viên công viên chủ đề",
+      roleDescription: "Bạn là một khách tham quan mới đến công viên chủ đề và rất tò mò về các hoạt động, trò chơi, và dịch vụ tại đây. Bạn sẽ hỏi các câu hỏi ngắn gọn và rõ ràng với nhân viên công viên để tìm hiểu thông tin.",
+      difficulty: "beginner",
+      vocabularyLevel: "basic",
+      estimatedDuration: 10,
+      tags: ["du lịch", "giải trí", "dịch vụ", "hỏi đáp"]
     },
     {
       name: "Gọi món",
-      prompt: `You are a customer ordering familiar food in a restaurant. Reply in 1–2 short sentences (max 25 words). Use only common dishes like burger, pizza, rice, soup.`,
-      initialMessage: "Hi, I’d like to order something to eat.",
-    },
+      prompt: `You are a customer ordering familiar food in a restaurant. Your role is to ask questions about the menu, prices, and place orders for common dishes. You should be polite and use simple vocabulary. Reply in 1–2 short sentences (max 25 words). Use only common dishes like burger, pizza, rice, soup.
 
+IMPORTANT ROLE CLARIFICATION:
+- You are the CUSTOMER asking about food
+- The user is the WAITER/STAFF taking your order
+- You should ask about: menu items, prices, recommendations, specials, cooking time
+- Always stay in character as the customer
+- Do not take orders - you are placing them!`,
+      initialMessage: "Hi! I'm hungry and I'd like to order some food. What do you recommend?",
+      aiRole: "Khách hàng gọi món",
+      userRole: "Nhân viên phục vụ nhà hàng",
+      roleDescription: "Bạn là khách hàng đến nhà hàng và muốn gọi món ăn. Bạn sẽ hỏi về menu, giá cả, và đặt những món ăn quen thuộc như burger, pizza, cơm, súp. Hãy sử dụng câu ngắn gọn và từ vựng cơ bản.",
+      difficulty: "beginner",
+      vocabularyLevel: "basic",
+      estimatedDuration: 8,
+      tags: ["nhà hàng", "ẩm thực", "gọi món", "dịch vụ"]
+    },
+    {
+      name: "Mua sắm",
+      prompt: `You are a customer shopping for clothes at a department store. Your role is to ask about sizes, colors, prices, and request to try on clothes. You should be interested in finding the right fit and style. Keep your responses natural and conversational, using common shopping vocabulary.
+
+IMPORTANT ROLE CLARIFICATION:
+- You are the CUSTOMER asking about clothes
+- The user is the SALESPERSON helping you
+- You should ask about: sizes, colors, prices, availability, trying on clothes, recommendations
+- Always stay in character as the customer
+- Do not help customers - you are the customer!`,
+      initialMessage: "Hi! I need some new clothes. What styles do you have available?",
+      aiRole: "Khách hàng mua sắm",
+      userRole: "Nhân viên bán hàng",
+      roleDescription: "Bạn là khách hàng đang mua sắm quần áo tại cửa hàng bách hóa. Bạn sẽ hỏi về kích thước, màu sắc, giá cả và thử đồ. Hãy sử dụng từ vựng mua sắm cơ bản và giao tiếp tự nhiên.",
+      difficulty: "intermediate",
+      vocabularyLevel: "intermediate",
+      estimatedDuration: 12,
+      tags: ["mua sắm", "thời trang", "quần áo", "dịch vụ khách hàng"]
+    },
+    {
+      name: "Đặt phòng khách sạn",
+      prompt: `You are a traveler booking a hotel room. Your role is to ask about room types, amenities, check-in/check-out times, and make a reservation. You should be polite and use clear language for hotel booking.
+
+IMPORTANT ROLE CLARIFICATION:
+- You are the TRAVELER asking about hotel services
+- The user is the RECEPTIONIST helping you
+- You should ask about: room types, prices, amenities, check-in/check-out times, availability, booking
+- Always stay in character as the traveler
+- Do not provide hotel information - you are asking for it!`,
+      initialMessage: "Hello! I'm planning a trip and I need to book a hotel room. What options do you have?",
+      aiRole: "Du khách đặt phòng",
+      userRole: "Nhân viên lễ tân khách sạn",
+      roleDescription: "Bạn là du khách đang đặt phòng khách sạn cho chuyến đi sắp tới. Bạn sẽ hỏi về các loại phòng, tiện nghi, giờ check-in/check-out và thực hiện đặt phòng. Sử dụng ngôn ngữ lịch sự và rõ ràng.",
+      difficulty: "intermediate",
+      vocabularyLevel: "intermediate",
+      estimatedDuration: 15,
+      tags: ["du lịch", "khách sạn", "đặt phòng", "dịch vụ"]
+    },
+    {
+      name: "Hỏi đường",
+      prompt: `You are a tourist asking for directions in a new city. Your role is to ask how to get to various places like museums, restaurants, and transportation. You should be polite and use simple, clear language for asking directions.
+
+IMPORTANT ROLE CLARIFICATION:
+- You are the TOURIST asking for directions
+- The user is the LOCAL PERSON helping you
+- You should ask about: how to get to places, transportation options, walking directions, nearby attractions
+- Always stay in character as the tourist
+- Do not give directions - you are asking for them!`,
+      initialMessage: "Excuse me, I'm a tourist here. Can you help me find my way around?",
+      aiRole: "Du khách hỏi đường",
+      userRole: "Người dân địa phương",
+      roleDescription: "Bạn là du khách đang hỏi đường trong một thành phố mới. Bạn sẽ hỏi cách đi đến các địa điểm như bảo tàng, nhà hàng và phương tiện giao thông. Sử dụng ngôn ngữ đơn giản và rõ ràng.",
+      difficulty: "beginner",
+      vocabularyLevel: "basic",
+      estimatedDuration: 10,
+      tags: ["du lịch", "giao thông", "hỏi đường", "giao tiếp"]
+    }
   ];
 
   // Đặt ở đầu function component, cùng chỗ với các useRef khác
@@ -588,6 +682,7 @@ const VoiceAIAssistant: React.FC = () => {
     setSelectedTopic(null);
     setSystemPrompt(null);
     setSessionStartTime(null);
+    setShowRoleInfo(false); // Ẩn thông tin vai trò
     localStorage.removeItem("selectedTopic");
     localStorage.removeItem("systemPrompt");
   };
@@ -621,9 +716,16 @@ const VoiceAIAssistant: React.FC = () => {
     setSystemPrompt(prompt);
     setSampleMode(false);
     setSessionStartTime(new Date()); // Bắt đầu session mới
+    setShowRoleInfo(true); // Hiển thị thông tin vai trò
     localStorage.setItem("selectedTopic", topicName);
     localStorage.setItem("systemPrompt", prompt);
     handleSendMessage(initialMessage, prompt);
+  };
+
+  // Function để tìm topic hiện tại
+  const getCurrentTopic = (): Topic | null => {
+    if (!selectedTopic) return null;
+    return topics.find(topic => topic.name === selectedTopic) || null;
   };
 
   // const handleSuggestReplyAt = async (index: number) => {
@@ -747,24 +849,42 @@ const VoiceAIAssistant: React.FC = () => {
 
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex">
-      {/* SIDEBAR */}
-      <Sidebar
-        topics={topics}
-        selectedTopic={selectedTopic}
-        onSelectTopic={handleSelectTopic}
-        onShowFullProgress={() => setShowProgressPanel(true)}
-        onSaveProgress={saveCurrentProgress}
-        hasMessages={messages.length > 0}
-      />
+    <div className="h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex flex-col lg:flex-row overflow-hidden">
+      {/* SIDEBAR - Hidden on mobile, shown on desktop */}
+      <div className="hidden lg:block">
+        <Sidebar
+          topics={topics}
+          selectedTopic={selectedTopic}
+          onSelectTopic={handleSelectTopic}
+          onShowFullProgress={() => setShowProgressPanel(true)}
+          onSaveProgress={saveCurrentProgress}
+          hasMessages={messages.length > 0}
+        />
+      </div>
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 flex">
+      <div className="flex-1 flex flex-col lg:flex-row">
         {/* CENTER CONTENT */}
-        <div className="flex-1 flex flex-col">
-          <div className="container mx-auto px-6 py-6 max-w-4xl">
-            {/* HEADER */}
-            <Header />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* MOBILE HEADER */}
+          <MobileHeader
+            onOpenSidebar={() => setShowMobileSidebar(true)}
+            onOpenVocabulary={() => setShowVocabularyManager(true)}
+            onOpenProgress={() => setShowProgressPanel(true)}
+            selectedTopic={selectedTopic}
+          />
+          
+          <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6 max-w-4xl h-full flex flex-col scrollbar-hide">
+            {/* HEADER - Hidden on mobile */}
+            <div className="hidden lg:block">
+              <Header />
+            </div>
+
+            {/* ROLE INFO */}
+            {/* <RoleInfo 
+              topic={getCurrentTopic()} 
+              isVisible={showRoleInfo} 
+            /> */}
 
             {/* ERROR ALERT */}
             {error && <ErrorAlert error={error} />}
@@ -780,28 +900,30 @@ const VoiceAIAssistant: React.FC = () => {
             {transcribedText && <TranscriptionBox text={transcribedText} />}
 
             {/* MESSAGE LIST */}
-            <MessageList
-              messages={messages}
-              sampleMode={sampleMode}
-              onSuggestReply={handleSuggestReplyAt}
-              isProcessing={isProcessing}
-              suggestingIndex={suggestingIndex}
-            />
+            <div className="flex-1 overflow-hidden">
+              <MessageList
+                messages={messages}
+                sampleMode={sampleMode}
+                onSuggestReply={handleSuggestReplyAt}
+                isProcessing={isProcessing}
+                suggestingIndex={suggestingIndex}
+              />
+            </div>
 
             {/* SUGGESTED REPLIES */}
             {replySuggestions.length > 0 && (
-              <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-yellow-400/30 shadow-lg">
-                <div className="flex items-center gap-2 mb-4">
+              <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-sm rounded-2xl p-4 sm:p-6 mb-4 border border-yellow-400/30 shadow-lg">
+                <div className="flex items-center gap-2 mb-3 sm:mb-4">
                   <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-                  <h3 className="text-lg font-semibold text-white/90">
+                  <h3 className="text-base sm:text-lg font-semibold text-white/90">
                     💡 Gợi ý câu bạn có thể thử nói
                   </h3>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {replySuggestions.map((s, i) => (
                     <div
                       key={i}
-                      className="bg-gradient-to-r from-yellow-400/20 to-orange-400/20 border border-yellow-400/50 rounded-xl px-4 py-3 text-white/90 font-medium"
+                      className="bg-gradient-to-r from-yellow-400/20 to-orange-400/20 border border-yellow-400/50 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-white/90 font-medium text-sm sm:text-base"
                     >
                       {s}
                     </div>
@@ -811,34 +933,49 @@ const VoiceAIAssistant: React.FC = () => {
             )}
 
             {/* CONTROL BUTTONS */}
-            <ControlButtons
-              isRecording={isRecording}
-              isProcessing={isProcessing || isAssessingPronunciation}
-              toggleRecording={toggleRecording}
-              isPlaying={isPlaying}
-              stopAudio={stopAudio}
-              clearConversation={clearConversation}
-              onTranslate={() => setShowTranslationPanel(true)}
-              hasMessages={messages.length > 0}
-              onOpenVocabulary={() => setShowVocabularyManager(true)}
-            />
+            <div className="mt-auto pt-4">
+              <ControlButtons
+                isRecording={isRecording}
+                isProcessing={isProcessing || isAssessingPronunciation}
+                toggleRecording={toggleRecording}
+                isPlaying={isPlaying}
+                stopAudio={stopAudio}
+                clearConversation={clearConversation}
+                onTranslate={() => setShowTranslationPanel(true)}
+                hasMessages={messages.length > 0}
+                onOpenVocabulary={() => setShowVocabularyManager(true)}
+              />
+            </div>
           </div>
         </div>
 
-        {/* RIGHT SIDEBAR - VOCABULARY SECTION */}
-        <div className="w-80 h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900 border-l border-white/20 flex flex-col p-4">
-                          <VocabularyReview 
-                  onOpenVocabularyManager={() => {
-                    setOpenVocabularyManagerInAddMode(false);
-                    setShowVocabularyManager(true);
-                  }}
-                  onOpenAddVocabulary={() => {
-                    setOpenVocabularyManagerInAddMode(true);
-                    setShowVocabularyManager(true);
-                  }}
-                />
+                {/* RIGHT SIDEBAR - VOCABULARY SECTION */}
+        <div className="hidden lg:flex w-80 h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900 border-l border-white/20 flex-col p-4 overflow-hidden">
+          <VocabularyReview 
+            onOpenVocabularyManager={() => {
+              setOpenVocabularyManagerInAddMode(false);
+              setShowVocabularyManager(true);
+            }}
+            onOpenAddVocabulary={() => {
+              setOpenVocabularyManagerInAddMode(true);
+              setShowVocabularyManager(true);
+            }}
+            refreshTrigger={vocabularyRefreshTrigger}
+          />
         </div>
       </div>
+
+      {/* MOBILE SIDEBAR */}
+      <MobileSidebar
+        isOpen={showMobileSidebar}
+        onClose={() => setShowMobileSidebar(false)}
+        topics={topics}
+        selectedTopic={selectedTopic}
+        onSelectTopic={handleSelectTopic}
+        onShowFullProgress={() => setShowProgressPanel(true)}
+        onSaveProgress={saveCurrentProgress}
+        hasMessages={messages.length > 0}
+      />
 
       {/* MODALS AND PANELS */}
       {/* ProgressPanel */}
@@ -862,6 +999,10 @@ const VoiceAIAssistant: React.FC = () => {
             setOpenVocabularyManagerInAddMode(false);
           }}
           openInAddMode={openVocabularyManagerInAddMode}
+          onVocabularyChange={() => {
+            // Trigger refresh of VocabularyReview
+            setVocabularyRefreshTrigger(prev => prev + 1);
+          }}
         />
 
       {/* Pronunciation Result Modal */}
@@ -884,6 +1025,9 @@ const VoiceAIAssistant: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Floating Feedback */}
+      <FloatingFeedback />
     </div>
   );
 };

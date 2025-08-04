@@ -8,9 +8,10 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   openInAddMode?: boolean;
+  onVocabularyChange?: () => void; // Callback khi có thay đổi từ vựng
 }
 
-const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = false }) => {
+const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = false, onVocabularyChange }) => {
   const [words, setWords] = useState<SavedWord[]>([]);
   const [filteredWords, setFilteredWords] = useState<SavedWord[]>([]);
   const [stats, setStats] = useState<VocabularyStats>(VocabularyService.getStats());
@@ -111,6 +112,11 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
 
     resetForm();
     loadData();
+    
+    // Notify parent component about vocabulary change
+    if (onVocabularyChange) {
+      onVocabularyChange();
+    }
   };
 
   // Reset form
@@ -179,6 +185,11 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
     if (confirm('Bạn có chắc muốn xóa từ này?')) {
       VocabularyService.deleteWord(id);
       loadData();
+      
+      // Notify parent component about vocabulary change
+      if (onVocabularyChange) {
+        onVocabularyChange();
+      }
     }
   };
 
@@ -186,12 +197,22 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
   const handleReview = (id: string) => {
     VocabularyService.markAsReviewed(id);
     loadData();
+    
+    // Notify parent component about vocabulary change
+    if (onVocabularyChange) {
+      onVocabularyChange();
+    }
   };
 
   // Mark as mastered
   const handleMaster = (id: string) => {
     VocabularyService.markAsMastered(id);
     loadData();
+    
+    // Notify parent component about vocabulary change
+    if (onVocabularyChange) {
+      onVocabularyChange();
+    }
   };
 
   // Export vocabulary
@@ -217,24 +238,24 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-gradient-to-br from-slate-800/90 to-green-800/90 backdrop-blur-sm rounded-2xl border border-white/20 shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+      <div className="bg-gradient-to-br from-slate-800/90 to-green-800/90 backdrop-blur-sm rounded-2xl border border-white/20 shadow-2xl w-full max-w-6xl max-h-[90vh] sm:max-h-[90vh] h-screen sm:h-auto flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/20 flex-shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/20 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="p-2 bg-gradient-to-r from-green-500/30 to-blue-500/30 rounded-xl">
-              <BookOpen className="w-6 h-6 text-green-300" />
+              <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-green-300" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-white">
+              <h3 className="text-lg sm:text-xl font-bold text-white">
                 {showAddForm ? (editingWord ? 'Sửa từ vựng' : 'Thêm từ vựng mới') : 'Quản lý từ vựng'}
               </h3>
-              <p className="text-white/70 text-sm">
+              <p className="text-white/70 text-xs sm:text-sm">
                 {showAddForm ? 'Điền thông tin từ vựng mới' : `${stats.totalWords} từ • ${stats.masteredWords} đã thuộc • ${stats.needReviewWords} cần ôn`}
               </p>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             {!showAddForm && (
               <>
                 <button
@@ -242,14 +263,14 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
                   className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                   title="Cài đặt"
                 >
-                  <Filter className="w-5 h-5 text-white/70" />
+                  <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-white/70" />
                 </button>
                 <button
                   onClick={handleExport}
                   className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                   title="Xuất file"
                 >
-                  <Download className="w-5 h-5 text-white/70" />
+                  <Download className="w-4 h-4 sm:w-5 sm:h-5 text-white/70" />
                 </button>
               </>
             )}
@@ -257,7 +278,7 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
               onClick={onClose}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
             >
-              <X className="w-5 h-5 text-white/70" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5 text-white/70" />
             </button>
           </div>
         </div>
@@ -265,7 +286,7 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
         {/* Settings Panel - Only show when not in add form */}
         {showSettings && !showAddForm && (
           <div className="p-4 bg-white/5 border-b border-white/20 flex-shrink-0">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-3">
                 <label className="flex items-center gap-2 text-white/80 text-sm">
                   <input
@@ -340,8 +361,9 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
         {/* Search and Filters - Only show when not in add form */}
         {!showAddForm && (
           <div className="p-4 border-b border-white/20 flex-shrink-0">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex-1 relative">
+            <div className="space-y-3">
+              {/* Search */}
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
                 <input
                   type="text"
@@ -352,45 +374,48 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
                 />
               </div>
               
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
-              >
-                <option value="all">Tất cả danh mục</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-              
-              <select
-                value={selectedDifficulty}
-                onChange={(e) => setSelectedDifficulty(e.target.value)}
-                className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
-              >
-                <option value="all">Tất cả độ khó</option>
-                <option value="easy">Dễ</option>
-                <option value="medium">Trung bình</option>
-                <option value="hard">Khó</option>
-              </select>
-              
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Thêm từ
-              </button>
+              {/* Filters Row */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="flex-1 sm:flex-none bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm"
+                >
+                  <option value="all">Tất cả danh mục</option>
+                  {categories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+                
+                <select
+                  value={selectedDifficulty}
+                  onChange={(e) => setSelectedDifficulty(e.target.value)}
+                  className="flex-1 sm:flex-none bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm"
+                >
+                  <option value="all">Tất cả độ khó</option>
+                  <option value="easy">Dễ</option>
+                  <option value="medium">Trung bình</option>
+                  <option value="hard">Khó</option>
+                </select>
+                
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-medium transition-colors flex items-center justify-center gap-2 text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  Thêm từ
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* Add/Edit Form - Full screen when active */}
         {showAddForm && (
-          <div className="flex-1 overflow-y-auto p-6">
-            <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
               {/* Word Input Section */}
-              <div className="flex items-end gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
                 <div className="flex-1">
                   <label className="text-white/80 text-sm mb-2 block">Từ *</label>
                   <input
@@ -407,7 +432,7 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
                   type="button"
                   onClick={handleAutoFill}
                   disabled={isLoadingAI || !formData.word.trim()}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-gray-500 disabled:to-gray-600 rounded-lg text-white font-medium transition-all duration-150 hover:scale-105 disabled:scale-100 flex items-center gap-2"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-gray-500 disabled:to-gray-600 rounded-lg text-white font-medium transition-all duration-150 hover:scale-105 disabled:scale-100 flex items-center justify-center gap-2 text-sm"
                 >
                   {isLoadingAI ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -419,24 +444,24 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
               </div>
 
               {/* Action Buttons - Moved to top for better accessibility */}
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2">
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-medium transition-colors"
+                  className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-medium transition-colors text-sm"
                 >
                   {editingWord ? 'Cập nhật' : 'Thêm từ'}
                 </button>
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-lg text-white font-medium transition-colors"
+                  className="px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-lg text-white font-medium transition-colors text-sm"
                 >
                   Hủy
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white font-medium transition-colors"
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white font-medium transition-colors text-sm"
                 >
                   Quay lại danh sách
                 </button>
@@ -450,7 +475,7 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
               </div>
 
               {/* Auto-filled Details Section */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-white/80 text-sm mb-2 block">Phiên âm</label>
                   <input
@@ -508,7 +533,7 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
                   />
                 </div>
               
-                <div className="col-span-2">
+                <div className="col-span-1 sm:col-span-2">
                   <label className="text-white/80 text-sm mb-2 block">Tags (phân cách bằng dấu phẩy)</label>
                   <input
                     type="text"
@@ -519,7 +544,7 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
                   />
                 </div>
               
-                <div className="col-span-2">
+                <div className="col-span-1 sm:col-span-2">
                   <label className="text-white/80 text-sm mb-2 block">Ghi chú</label>
                   <textarea
                     value={formData.notes}
@@ -555,9 +580,9 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
               <div className="grid gap-4">
                 {filteredWords.map(word => (
                   <div key={word.id} className="bg-white/10 rounded-lg p-4 border border-white/20">
-                    <div className="flex items-start justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
                           <h4 className="text-lg font-bold text-white">{word.word}</h4>
                           {settings.showPronunciation && (
                             <span className="text-blue-300 text-sm">[{word.pronunciation}]</span>
@@ -585,7 +610,7 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
                           <p className="text-white/70 text-sm mb-2 italic">"{word.example}"</p>
                         )}
                         
-                        <div className="flex items-center gap-4 text-sm text-white/60">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-white/60">
                           <span>{word.category}</span>
                           {word.tags.length > 0 && (
                             <span>Tags: {word.tags.join(', ')}</span>
@@ -599,13 +624,13 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
                         )}
                       </div>
                       
-                      <div className="flex items-center gap-2 ml-4">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         <button
                           onClick={() => handleReview(word.id)}
                           className="p-2 hover:bg-white/10 rounded transition-colors"
                           title="Đánh dấu đã ôn"
                         >
-                          <Clock className="w-4 h-4 text-blue-400" />
+                          <Clock className="w-4 h-4 sm:w-4 sm:h-4 text-blue-400" />
                         </button>
                         
                         <button
@@ -613,7 +638,7 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
                           className="p-2 hover:bg-white/10 rounded transition-colors"
                           title="Đánh dấu đã thuộc"
                         >
-                          <Target className="w-4 h-4 text-purple-400" />
+                          <Target className="w-4 h-4 sm:w-4 sm:h-4 text-purple-400" />
                         </button>
                         
                         <button
@@ -621,7 +646,7 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
                           className="p-2 hover:bg-white/10 rounded transition-colors"
                           title="Sửa"
                         >
-                          <Edit className="w-4 h-4 text-yellow-400" />
+                          <Edit className="w-4 h-4 sm:w-4 sm:h-4 text-yellow-400" />
                         </button>
                         
                         <button
@@ -629,7 +654,7 @@ const VocabularyManager: React.FC<Props> = ({ isOpen, onClose, openInAddMode = f
                           className="p-2 hover:bg-white/10 rounded transition-colors"
                           title="Xóa"
                         >
-                          <Trash className="w-4 h-4 text-red-400" />
+                          <Trash className="w-4 h-4 sm:w-4 sm:h-4 text-red-400" />
                         </button>
                       </div>
                     </div>

@@ -37,22 +37,22 @@ const ControlButtons: React.FC<Props> = React.memo(({
   onCheckLocalStorage,
   onTestDateHandling,
 }) => (
-  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-    <div className="flex justify-center gap-4">
+  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-3 sm:p-4 border border-white/20">
+    <div className="flex justify-center gap-2 sm:gap-4">
     <div className="relative group">
       <button
         onClick={toggleRecording}
         disabled={isProcessing}
-        className={`p-4 rounded-xl transition-all duration-150 hover:scale-105 ${
+        className={`p-3 sm:p-4 rounded-xl transition-all duration-150 hover:scale-105 ${
           isRecording
             ? "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/25 border border-red-400/50"
             : "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg shadow-blue-500/25 border border-blue-400/50"
         } disabled:opacity-50 disabled:cursor-not-allowed`}
       >
         {isRecording ? (
-          <MicOff className="w-6 h-6" />
+          <MicOff className="w-5 h-5 sm:w-6 sm:h-6" />
         ) : (
-          <Mic className="w-6 h-6" />
+          <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
         )}
       </button>
       
@@ -97,9 +97,9 @@ const ControlButtons: React.FC<Props> = React.memo(({
          <div className="relative group">
        <button
          onClick={clearConversation}
-         className="p-4 rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 shadow-lg shadow-slate-500/25 transition-all duration-150 hover:scale-105 border border-slate-400/50"
+         className="p-3 sm:p-4 rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 shadow-lg shadow-slate-500/25 transition-all duration-150 hover:scale-105 border border-slate-400/50"
        >
-         <Trash className="w-6 h-6" />
+                    <Trash className="w-5 h-5 sm:w-6 sm:h-6" />
        </button>
        
        {/* Tooltip */}
@@ -114,9 +114,9 @@ const ControlButtons: React.FC<Props> = React.memo(({
        <div className="relative group">
          <button
            onClick={onTranslate}
-           className="p-4 rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg shadow-green-500/25 transition-all duration-150 hover:scale-105 border border-green-400/50"
+           className="p-3 sm:p-4 rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg shadow-green-500/25 transition-all duration-150 hover:scale-105 border border-green-400/50"
          >
-           <Languages className="w-6 h-6" />
+           <Languages className="w-5 h-5 sm:w-6 sm:h-6" />
          </button>
          
          {/* Tooltip */}
@@ -132,9 +132,9 @@ const ControlButtons: React.FC<Props> = React.memo(({
        <div className="relative group">
          <button
            onClick={onOpenVocabulary}
-           className="p-4 rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-lg shadow-purple-500/25 transition-all duration-150 hover:scale-105 border border-purple-400/50"
+           className="p-3 sm:p-4 rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-lg shadow-purple-500/25 transition-all duration-150 hover:scale-105 border border-purple-400/50"
          >
-           <BookOpen className="w-6 h-6" />
+           <BookOpen className="w-5 h-5 sm:w-6 sm:h-6" />
          </button>
          
          {/* Tooltip */}

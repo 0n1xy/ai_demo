@@ -6,15 +6,16 @@ import type { SavedWord } from '../types/vocabulary.types';
 interface Props {
   onOpenVocabularyManager: () => void;
   onOpenAddVocabulary?: () => void;
+  refreshTrigger?: number; // Thêm prop để trigger refresh
 }
 
-const VocabularyReview: React.FC<Props> = ({ onOpenVocabularyManager, onOpenAddVocabulary }) => {
+const VocabularyReview: React.FC<Props> = ({ onOpenVocabularyManager, onOpenAddVocabulary, refreshTrigger }) => {
   const [wordsForReview, setWordsForReview] = useState<SavedWord[]>([]);
   const [stats, setStats] = useState(VocabularyService.getStats());
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [refreshTrigger]); // Reload khi refreshTrigger thay đổi
 
   const loadData = () => {
     const reviewWords = VocabularyService.getWordsForReview();
@@ -79,15 +80,15 @@ const VocabularyReview: React.FC<Props> = ({ onOpenVocabularyManager, onOpenAddV
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 mb-4 text-center">
         <div className="bg-white/5 rounded-lg p-2">
-          <div className="text-white font-bold text-lg">{stats.totalWords}</div>
+          <div className="text-white font-bold text-base sm:text-lg">{stats.totalWords}</div>
           <div className="text-white/60 text-xs">Tổng</div>
         </div>
         <div className="bg-white/5 rounded-lg p-2">
-          <div className="text-green-400 font-bold text-lg">{stats.masteredWords}</div>
+          <div className="text-green-400 font-bold text-base sm:text-lg">{stats.masteredWords}</div>
           <div className="text-white/60 text-xs">Thuộc</div>
         </div>
         <div className="bg-white/5 rounded-lg p-2">
-          <div className="text-orange-400 font-bold text-lg">{stats.needReviewWords}</div>
+          <div className="text-orange-400 font-bold text-base sm:text-lg">{stats.needReviewWords}</div>
           <div className="text-white/60 text-xs">Cần ôn</div>
         </div>
       </div>
@@ -101,9 +102,9 @@ const VocabularyReview: React.FC<Props> = ({ onOpenVocabularyManager, onOpenAddV
           </div>
           {wordsForReview.map(word => (
             <div key={word.id} className="bg-white/5 rounded-lg p-3 border border-white/10">
-              <div className="flex items-start justify-between mb-2">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-2 gap-2">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h4 className="text-white font-medium text-sm">{word.word}</h4>
                     <span className="text-blue-300 text-xs">[{word.pronunciation}]</span>
                     {word.mastered && (
@@ -112,7 +113,7 @@ const VocabularyReview: React.FC<Props> = ({ onOpenVocabularyManager, onOpenAddV
                   </div>
                   <p className="text-white/70 text-xs">{word.meaning}</p>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 self-end sm:self-start">
                   <button
                     onClick={() => handleReview(word.id)}
                     className="p-1 hover:bg-white/10 rounded transition-colors"

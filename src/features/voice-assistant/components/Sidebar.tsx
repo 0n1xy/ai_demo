@@ -5,13 +5,7 @@ import { Separator } from '../../../components/ui/separator';
 import { Button } from '../../../components/ui/button';
 import { Target, TrendingUp, Clock, BookOpen } from 'lucide-react';
 import { ProgressService } from '../service/progressService';
-import type { UserStats } from '../types/types';
-
-interface Topic {
-  name: string;
-  prompt: string;
-  initialMessage: string;
-}
+import type { UserStats, Topic } from '../types/types';
 
 interface Props {
   topics: Topic[];
@@ -44,7 +38,7 @@ const Sidebar: React.FC<Props> = React.memo(({
   }, []);
 
   return (
-    <div className="w-80 h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900 border-r border-white/20 flex flex-col">
+         <div className="w-80 h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900 border-r border-white/20 flex flex-col overflow-hidden">
       {/* Topics Section */}
       <Card className="m-4 bg-white/10 backdrop-blur-sm border-white/20">
         <CardHeader className="pb-3">
@@ -54,7 +48,7 @@ const Sidebar: React.FC<Props> = React.memo(({
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="space-y-3 max-h-64 overflow-y-auto scrollbar-hide">
+                     <div className="space-y-3 max-h-48 overflow-y-auto scrollbar-hide">
             {topics.map((topic) => (
               <Button
                 key={topic.name}
@@ -66,12 +60,31 @@ const Sidebar: React.FC<Props> = React.memo(({
                 }`}
                 onClick={() => onSelectTopic(topic.name, topic.prompt, topic.initialMessage)}
               >
-                <div>
+                <div className="w-full">
                   <div className="font-semibold mb-1">{topic.name}</div>
-                  <div className="text-xs opacity-70">
-                    {topic.name === "Công viên chủ đề" 
-                      ? "Hỏi đáp về công viên giải trí" 
-                      : "Đặt món ăn tại nhà hàng"}
+                  <div className="text-xs opacity-70 mb-2">
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="text-blue-300">🤖 AI:</span>
+                      <span>{topic.aiRole}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-green-300">👤 Bạn:</span>
+                      <span>{topic.userRole}</span>
+                    </div>
+                  </div>
+                  <div className="text-xs opacity-60 line-clamp-2">
+                    {topic.roleDescription}
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      topic.difficulty === 'beginner' ? 'bg-green-500/20 text-green-300' :
+                      topic.difficulty === 'intermediate' ? 'bg-yellow-500/20 text-yellow-300' :
+                      'bg-red-500/20 text-red-300'
+                    }`}>
+                      {topic.difficulty === 'beginner' ? 'Cơ bản' :
+                       topic.difficulty === 'intermediate' ? 'Trung bình' : 'Nâng cao'}
+                    </span>
+                    <span className="text-xs opacity-50">⏱️ {topic.estimatedDuration} phút</span>
                   </div>
                 </div>
               </Button>
@@ -82,16 +95,16 @@ const Sidebar: React.FC<Props> = React.memo(({
 
       <Separator className="mx-4 bg-white/20" />
 
-      {/* Progress Section */}
-      <Card className="m-4 flex-1 bg-white/10 backdrop-blur-sm border-white/20">
+             {/* Progress Section */}
+       <Card className="m-4 flex-1 bg-white/10 backdrop-blur-sm border-white/20 flex flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-green-300" />
             Tiến trình học
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-0">
-          <div className="h-full overflow-y-auto scrollbar-hide">
+                 <CardContent className="pt-0 flex-1">
+           <div className="h-full overflow-y-auto scrollbar-hide">
             {!stats || stats.totalConversations === 0 ? (
               <div className="text-center py-6">
                 <BookOpen className="w-10 h-10 mx-auto mb-2 text-white/40" />

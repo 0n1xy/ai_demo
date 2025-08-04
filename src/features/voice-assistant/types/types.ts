@@ -73,3 +73,16 @@ export interface UserStats {
     totalStudyDays: number;
   };
 }
+
+export interface Topic {
+  name: string;
+  prompt: string;
+  initialMessage: string;
+  aiRole: string; // Vai trò của AI trong cuộc hội thoại
+  userRole: string; // Vai trò của người dùng trong cuộc hội thoại
+  roleDescription: string; // Mô tả chi tiết về vai trò và tình huống
+  difficulty: 'beginner' | 'intermediate' | 'advanced'; // Độ khó của chủ đề
+  vocabularyLevel: 'basic' | 'intermediate' | 'advanced'; // Cấp độ từ vựng cần thiết
+  estimatedDuration: number; // Thời gian ước tính cho cuộc hội thoại (phút)
+  tags: string[]; // Các tag để phân loại chủ đề
+}

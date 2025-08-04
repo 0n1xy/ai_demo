@@ -48,7 +48,7 @@ const MessageList: React.FC<Props> = React.memo(({
   };
 
   return (
-  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-6 min-h-[400px] max-h-[600px] overflow-y-auto border border-white/20">
+  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 h-full overflow-y-auto custom-scrollbar border border-white/20">
     {messages.length === 0 ? (
       <div className="text-center text-white/60 py-12">
         <MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -68,7 +68,7 @@ const MessageList: React.FC<Props> = React.memo(({
               className={`flex ${isUser ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`relative group max-w-xs lg:max-w-md px-4 py-3 rounded-2xl transition-all duration-200 ease-in-out shadow-lg
+                className={`relative group max-w-[85%] sm:max-w-xs lg:max-w-md px-3 sm:px-4 py-2 sm:py-3 pt-4 sm:pt-3 rounded-2xl transition-all duration-200 ease-in-out shadow-lg
                   ${
                     isUser
                       ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white border border-blue-400/50"
@@ -125,17 +125,17 @@ const MessageList: React.FC<Props> = React.memo(({
                 </div>
 
                 {isAssistant && onSuggestReply && (
-                  <div className="flex items-center gap-2 absolute -top-3 -right-3">
+                  <div className="flex items-center gap-2 absolute -top-2 sm:-top-3 -right-2 sm:-right-3">
                     <button
                       onClick={() => onSuggestReply(index)}
-                      className="text-xs bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black px-3 py-1 rounded-full font-medium transition-all duration-150 hover:scale-105 shadow-lg"
+                      className="text-xs bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black px-2 sm:px-3 py-1 rounded-full font-medium transition-all duration-150 hover:scale-105 shadow-lg"
                       title="Get reply suggestion"
                       disabled={suggestingIndex === index}
                     >
                       💡 Gợi ý
                     </button>
                     {suggestingIndex === index && (
-                      <span className="w-4 h-4 rounded-full border-2 border-yellow-400 border-t-transparent animate-spin inline-block"></span>
+                      <span className="w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 border-yellow-400 border-t-transparent animate-spin inline-block"></span>
                     )}
                   </div>
                 )}
